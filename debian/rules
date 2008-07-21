@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+# -*- mode: makefile; coding: utf-8 -*-
+
+DEB_PYTHON_SYSTEM=pycentral
+DEB_COMPRESS_EXCLUDE := .py .xml
+
+# Keep the .egg-info in the /usr/lib/python2.X/... directory
+#export DH_PYCENTRAL="nomove"
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/python-distutils.mk
+include /usr/share/cdbs/1/rules/simple-patchsys.mk

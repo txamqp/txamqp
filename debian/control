@@ -1,0 +1,16 @@
+Source: fluidinfo-twisted-amqp
+Section: python
+Priority: extra
+Maintainer: Esteve Fernandez <esteve@fluidinfo.com>
+Build-Depends: cdbs, debhelper (>= 5.0.38), python-central (>= 0.5.6)
+Standards-Version: 3.7.2
+XS-Python-Version: 2.5
+
+Package: fluidinfo-twisted-amqp
+Architecture: all
+Depends: python-qpid (= 0.1~M2), ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}
+XB-Python-Version: ${python:Versions}
+Description: An AMQP library for Twisted
+ A Python library for connecting, sending and receiving messages
+ to/from an AMQP-compliant peer or broker (Qpid, OpenAMQ,
+ RabbitMQ) using Twisted.
