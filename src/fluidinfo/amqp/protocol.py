@@ -6,7 +6,7 @@ from qpid import spec, codec, connection
 from qpid.message import Message
 from qpid.content import Content
 from qpid.peer import Closed
-from StringIO import StringIO
+from cStringIO import StringIO
 import struct
 
 class GarbageException(Exception):
@@ -126,7 +126,7 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
             if end != self.FRAME_END:
                 raise GarbageException('frame error: expected %r, got %r' % (self.FRAME_END, end))
             frame = connection.Frame(channel, payload)
-            return frame, data[s.pos:]
+            return frame, s.read()
         except codec.EOF:
             return data
         except struct.error:
