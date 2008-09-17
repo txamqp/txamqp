@@ -1,3 +1,9 @@
+python-txamqp (0.1) hardy; urgency=low
+
+  * Rename package to python-txamqp (closes bug #271445)
+
+ -- Esteve Fernandez <esteve@fluidinfo.com>  Wed, 17 Sep 2008 20:23:10 +0200
+
 fluidinfo-twisted-amqp (0.1) unstable; urgency=low
 
   * Initial Release.
