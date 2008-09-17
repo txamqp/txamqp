@@ -22,7 +22,7 @@
 # 
 
 from qpid.content import Content
-from fluidinfo.amqp.testlib import TestBase
+from txamqp.testlib import TestBase
 from Queue import Empty
 
 import sys

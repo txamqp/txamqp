@@ -24,7 +24,7 @@ Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
 
 import Queue, logging
-from fluidinfo.amqp.testlib import TestBase
+from txamqp.testlib import TestBase
 from qpid.content import Content
 from qpid.client import Closed
 

@@ -20,7 +20,7 @@
 from qpid.content import Content
 import qpid.spec
 
-from fluidinfo.amqp.protocol import AMQChannel, AMQClient
+from txamqp.protocol import AMQChannel, AMQClient
 
 from twisted.internet import protocol, reactor
 from twisted.trial import unittest

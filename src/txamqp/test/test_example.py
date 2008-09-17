@@ -19,7 +19,7 @@
 
 from qpid.content import Content
 from qpid import spec
-from fluidinfo.amqp.testlib import TestBase
+from txamqp.testlib import TestBase
 
 from twisted.internet.defer import inlineCallbacks
 
