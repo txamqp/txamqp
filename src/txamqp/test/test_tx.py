@@ -19,7 +19,7 @@
 from qpid.client import Client, Closed
 from qpid.queue import Empty
 from qpid.content import Content
-from fluidinfo.amqp.testlib import TestBase
+from txamqp.testlib import TestBase
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
