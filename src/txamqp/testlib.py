@@ -20,7 +20,7 @@
 from qpid.content import Content
 import qpid.spec
 
-from txamqp.protocol import AMQChannel, AMQClient
+from txamqp.protocol import AMQChannel, AMQClient, TwistedDelegate
 
 from twisted.internet import protocol, reactor
 from twisted.trial import unittest
@@ -29,62 +29,9 @@ from twisted.python import failure
 from qpid.peer import Closed
 from qpid.queue import Empty
 
-class TimeoutDeferredQueue(DeferredQueue):
-
-    def _timeout(self, deferred):
-        if not deferred.called:
-            if deferred in self.waiting:
-                self.waiting.remove(deferred)
-                deferred.errback(Empty())
-
-    def get(self, timeout=None):
-        deferred = DeferredQueue.get(self)
-        if timeout:
-            deferred.setTimeout(timeout, timeoutFunc=self._timeout)
-        return deferred
-
-class TestAMQChannel(AMQChannel):
-
-    def messageReceived(self, message):
-        method = message.method
-        name = "%s_%s" % (qpid.spec.pythonize(method.klass.name),
-                        qpid.spec.pythonize(method.name))
-
-        if name == 'basic_deliver':
-            self.proto.queue(message.consumer_tag).addCallback(self._messageReceived, message)
-        elif name == 'channel_close' or name == 'connection_close':
-            deferred, self.deferred = self.deferred, Deferred()
-            deferred.errback(Closed(message))
-        else:
-            deferred, self.deferred = self.deferred, Deferred()
-            deferred.callback(message)
-
-    def _messageReceived(self, queue, message):
-        queue.put(message)
-
 class TestAMQClient(AMQClient):
 
     greetDeferred = None
-    channelClass = TestAMQChannel
-
-    def __init__(self, *args, **kwargs):
-        AMQClient.__init__(self, *args, **kwargs)
-        self.lock = DeferredLock()
-        self.queues = {}
-
-    def _queue(self, lock, key):
-        try:
-            try:
-                q = self.queues[key]
-            except KeyError:
-                q = TimeoutDeferredQueue()
-                self.queues[key] = q
-        finally:
-            lock.release()
-        return q
-
-    def queue(self, key):
-        return self.lock.acquire().addCallback(self._queue, key)
 
     def serverGreeting(self):
         if self.greetDeferred is not None:
@@ -102,9 +49,14 @@ class TestAMQClientFactory(protocol.ClientFactory):
     def buildProtocol(self, addr):
         # We need to override buildProtocol, AMQClient needs the AMQP spec
         # as a constructor parameter
+
         p = self.protocol(self.spec)
         p.factory = self
         p.greetDeferred = self.onConn
+
+        delegate = TwistedDelegate(p)
+
+        p.delegate = delegate
         return p
 
 class TestBase(unittest.TestCase):
@@ -132,6 +84,7 @@ class TestBase(unittest.TestCase):
         self.connectors.append(connector)
 
         client = yield onConn
+
         yield client.start({"LOGIN": user, "PASSWORD": password})
         returnValue(client)
  
