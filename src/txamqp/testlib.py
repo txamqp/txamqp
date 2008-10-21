@@ -29,36 +29,6 @@ from twisted.python import failure
 from qpid.peer import Closed
 from qpid.queue import Empty
 
-class TestAMQClient(AMQClient):
-
-    greetDeferred = None
-
-    def serverGreeting(self):
-        if self.greetDeferred is not None:
-            d, self.greetDeferred = self.greetDeferred, None
-            d.callback(self)
-
-class TestAMQClientFactory(protocol.ClientFactory):
-
-    protocol = TestAMQClient
-
-    def __init__(self, spec, onConn):
-        self.spec = spec
-        self.onConn = onConn
-
-    def buildProtocol(self, addr):
-        # We need to override buildProtocol, AMQClient needs the AMQP spec
-        # as a constructor parameter
-
-        p = self.protocol(self.spec)
-        p.factory = self
-        p.greetDeferred = self.onConn
-
-        delegate = TwistedDelegate(p)
-
-        p.delegate = delegate
-        return p
-
 class TestBase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
@@ -78,11 +48,12 @@ class TestBase(unittest.TestCase):
         user = user or self.user
         password = password or self.password
 
-        onConn = Deferred()
-        connector = reactor.connectTCP(host, port,
-            TestAMQClientFactory(qpid.spec.load(spec), onConn))
-        self.connectors.append(connector)
+        delegate = TwistedDelegate()
 
+        onConn = Deferred()
+        f = protocol._InstanceFactory(reactor, AMQClient(delegate, qpid.spec.load(spec)), onConn)
+        c = reactor.connectTCP(host, port, f)
+        self.connectors.append(c)
         client = yield onConn
 
         yield client.start({"LOGIN": user, "PASSWORD": password})

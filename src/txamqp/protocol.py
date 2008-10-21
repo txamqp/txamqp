@@ -16,24 +16,19 @@ import struct
 class GarbageException(Exception):
     pass
 
-class FakeEvent(object):
+class TwistedEvent(object):
     def __init__(self):
         self.deferred = defer.Deferred()
         self.alreadyCalled = False
 
     def set(self):
-        if not self.alreadyCalled:
-            self.deferred.callback(None)
-            self.alreadyCalled = True
+        deferred, self.deferred = self.deferred, defer.Deferred()
+        deferred.callback(None)
 
     def wait(self):
         return self.deferred
 
 class TwistedDelegate(Delegate):
-
-    def __init__(self, client):
-        Delegate.__init__(self)
-        self.client = client
 
     def connection_start(self, ch, msg):
         ch.connection_start_ok(mechanism=self.client.mechanism,
@@ -271,7 +266,12 @@ class AMQClient(FrameReceiver):
 
     channelClass = AMQChannel
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, delegate, *args, **kwargs):
+        self.delegate = delegate
+
+        # XXX Cyclic dependency
+        self.delegate.client = self
+
         self.vhost = kwargs.pop('vhost', 'localhost')
         FrameReceiver.__init__(self, *args, **kwargs)
 
@@ -283,9 +283,7 @@ class AMQClient(FrameReceiver):
         self.outgoing = defer.DeferredQueue()
         self.work = defer.DeferredQueue()
 
-        self.states = {}
-
-        self.started = FakeEvent()
+        self.started = TwistedEvent()
 
         self.queueLock = defer.DeferredLock()
 
@@ -370,8 +368,6 @@ class AMQClient(FrameReceiver):
         ch.dispatch(frame, self.work)
 
     def state_WELCOME(self, frame):
-        self.serverGreeting()
-
         self.startQueues()
 
         self.channel(frame.channel).addCallback(self._state_WELCOME, frame)
