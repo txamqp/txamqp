@@ -266,14 +266,14 @@ class AMQClient(FrameReceiver):
 
     channelClass = AMQChannel
 
-    def __init__(self, delegate, *args, **kwargs):
+    def __init__(self, delegate, vhost, *args, **kwargs):
+        FrameReceiver.__init__(self, *args, **kwargs)
         self.delegate = delegate
 
         # XXX Cyclic dependency
         self.delegate.client = self
 
-        self.vhost = kwargs.pop('vhost', 'localhost')
-        FrameReceiver.__init__(self, *args, **kwargs)
+        self.vhost = vhost
 
         self.channelFactory = type("Channel%s" % self.spec.klass.__name__,
                                     (self.channelClass, self.spec.klass), {})

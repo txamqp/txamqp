@@ -39,19 +39,20 @@ class TestBase(unittest.TestCase):
         self.spec = '../specs/amqp.0-8.xml'
         self.user = 'guest'
         self.password = 'guest'
+        self.vhost = 'localhost'
 
     @inlineCallbacks
-    def connect(self, host=None, port=None, spec=None, user=None, password=None):
+    def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None):
         host = host or self.host
         port = port or self.port
         spec = spec or self.spec
         user = user or self.user
         password = password or self.password
+        vhost = vhost or self.vhost
 
         delegate = TwistedDelegate()
-
         onConn = Deferred()
-        f = protocol._InstanceFactory(reactor, AMQClient(delegate, qpid.spec.load(spec)), onConn)
+        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, qpid.spec.load(spec)), onConn)
         c = reactor.connectTCP(host, port, f)
         self.connectors.append(c)
         client = yield onConn
