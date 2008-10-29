@@ -23,10 +23,10 @@ Tests for exchange behaviour.
 Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
 
-import Queue, logging
+from txamqp.queue import Empty
 from txamqp.testlib import TestBase
-from qpid.content import Content
-from qpid.client import Closed
+from txamqp.content import Content
+from txamqp.client import Closed
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -44,7 +44,7 @@ class StandardExchangeVerifier:
         try:
             yield self.assertPublishConsume(exchange=ex, queue="q", routing_key="kk")
             self.fail("Expected Empty exception")
-        except Queue.Empty: None # Expected
+        except Empty: None # Expected
 
     @inlineCallbacks
     def verifyFanOutExchange(self, ex):

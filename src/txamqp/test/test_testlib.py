@@ -21,9 +21,9 @@
 # Tests for the testlib itself.
 # 
 
-from qpid.content import Content
+from txamqp.content import Content
 from txamqp.testlib import TestBase
-from Queue import Empty
+from txamqp.queue import Empty
 
 import sys
 from traceback import *

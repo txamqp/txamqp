@@ -2,86 +2,18 @@
 from twisted.python import log
 from twisted.internet import defer, protocol
 from twisted.protocols import basic
-from qpid import spec
-from qpid.codec import Codec, EOF
-from qpid.connection import Header, Frame, Method, Body
-from qpid.message import Message
-from qpid.content import Content
-from qpid.peer import Closed
-from qpid.queue import Empty, Closed as QueueClosed
-from qpid.delegate import Delegate
+from txamqp import spec
+from txamqp.codec import Codec, EOF
+from txamqp.connection import Header, Frame, Method, Body
+from txamqp.message import Message
+from txamqp.content import Content
+from txamqp.queue import TimeoutDeferredQueue, Empty, Closed as QueueClosed
+from txamqp.client import TwistedEvent, TwistedDelegate, Closed
 from cStringIO import StringIO
 import struct
 
 class GarbageException(Exception):
     pass
-
-class TwistedEvent(object):
-    def __init__(self):
-        self.deferred = defer.Deferred()
-        self.alreadyCalled = False
-
-    def set(self):
-        deferred, self.deferred = self.deferred, defer.Deferred()
-        deferred.callback(None)
-
-    def wait(self):
-        return self.deferred
-
-class TwistedDelegate(Delegate):
-
-    def connection_start(self, ch, msg):
-        ch.connection_start_ok(mechanism=self.client.mechanism,
-                               response=self.client.response,
-                               locale=self.client.locale)
-
-    def connection_tune(self, ch, msg):
-        ch.connection_tune_ok(*msg.fields)
-        self.client.started.set()
-
-    @defer.inlineCallbacks
-    def basic_deliver(self, ch, msg):
-        (yield self.client.queue(msg.consumer_tag)).put(msg)
-
-    def channel_close(self, ch, msg):
-        ch.close(msg)
-
-    def connection_close(self, ch, msg):
-        self.client.close(msg)
-
-    def close(self, reason):
-        self.client.closed = True
-        self.client.started.set()
-
-class TimeoutDeferredQueue(defer.DeferredQueue):
-
-    END = object()
-
-    def _timeout(self, deferred):
-        if not deferred.called:
-            if deferred in self.waiting:
-                self.waiting.remove(deferred)
-                deferred.errback(Empty())
-
-    def _raiseIfClosed(self, result):
-        if result == TimeoutDeferredQueue.END:
-            self.put(TimeoutDeferredQueue.END)
-
-            raise QueueClosed()
-        else:
-            return result
-
-    def get(self, timeout=None):
-        deferred = defer.DeferredQueue.get(self)
-
-        deferred.addCallback(self._raiseIfClosed)
-
-        if timeout:
-            deferred.setTimeout(timeout, timeoutFunc=self._timeout)
-        return deferred
-
-    def close(self):
-        self.put(TimeoutDeferredQueue.END)
 
 # An AMQP channel is a virtual connection that shares the
 # same socket with others channels. One can have many channels
@@ -289,6 +221,9 @@ class AMQClient(FrameReceiver):
 
         self.queues = {}
 
+        self.outgoing.get().addCallback(self.writer)
+        self.work.get().addCallback(self.worker)
+
     @defer.inlineCallbacks
     def channel(self, id):
         yield self.channelLock.acquire()
@@ -315,10 +250,6 @@ class AMQClient(FrameReceiver):
             self.queueLock.release()
         defer.returnValue(q)
  
-    def startQueues(self):
-        self.outgoing.get().addCallback(self.writer)
-        self.work.get().addCallback(self.worker)
-
     def close(self, reason):
         for ch in self.channels.values():
             ch.close(reason)
@@ -328,14 +259,14 @@ class AMQClient(FrameReceiver):
         self.sendFrame(frame)
         self.outgoing.get().addCallback(self.writer)
 
-    def _worker(self, _, queue):
-        self.work.get().addCallback(self.worker)
-
-    def _raise(self, e):
-        self.close(e)
-
+    @defer.inlineCallbacks
     def worker(self, queue):
-        self.dispatch(queue).addCallbacks(callback=self._worker, errback=self._raise, callbackArgs=[queue])
+        try:
+            yield self.dispatch(queue)
+            queue = yield self.work.get()
+            self.worker(queue)
+        except Exception, e:
+            self.close(e)
 
     @defer.inlineCallbacks
     def dispatch(self, queue):
@@ -353,34 +284,15 @@ class AMQClient(FrameReceiver):
     # As soon as we connect to the target AMQP broker, send the init string
     def connectionMade(self):
         self.sendInitString()
-        self.state = 'WELCOME'
         self.setFrameMode()
 
     def frameReceived(self, frame):
-        state = self.state
-        self.state = None
+        self.processFrame(frame)
 
-        state = getattr(self, 'state_' + state)(frame) or state
-        if self.state is None:
-            self.state = state
-
-    def _state_WELCOME(self, ch, frame):
+    @defer.inlineCallbacks
+    def processFrame(self, frame):
+        ch = yield self.channel(frame.channel)
         ch.dispatch(frame, self.work)
-
-    def state_WELCOME(self, frame):
-        self.startQueues()
-
-        self.channel(frame.channel).addCallback(self._state_WELCOME, frame)
-
-        return 'MESSAGE'
-
-    def _state_MESSAGE(self, ch, frame):
-        ch.dispatch(frame, self.work)
-       
-    def state_MESSAGE(self, frame):
-        self.channel(frame.channel).addCallback(self._state_MESSAGE, frame)
-
-        return 'MESSAGE'
 
     @defer.inlineCallbacks
     def start(self, response, mechanism='AMQPLAIN', locale='en_US'):
