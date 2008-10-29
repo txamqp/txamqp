@@ -1,3 +1,9 @@
+python-txamqp (0.2) hardy; urgency=low
+
+  * Bump version.
+
+ -- Esteve Fernandez <esteve@fluidinfo.com>  Tue, 28 Oct 2008 13:58:56 +0100
+
 python-txamqp (0.1) hardy; urgency=low
 
   * Rename package to python-txamqp (closes bug #271445)

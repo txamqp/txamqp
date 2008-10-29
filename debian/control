@@ -9,9 +9,15 @@ XS-Python-Version: 2.5
 Package: python-txamqp
 Architecture: all
 Replaces: fluidinfo-twisted-amqp
-Depends: python-qpid (= 0.1~M2), ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}
+Suggests: thrift
 XB-Python-Version: ${python:Versions}
 Description: An AMQP library for Twisted
  A Python library for connecting, sending and receiving messages
  to/from an AMQP-compliant peer or broker (Qpid, OpenAMQ,
  RabbitMQ) using Twisted.
+ .
+ Also included is support for using the Apache Thrift RPC
+ mechanism over AMQP.
+ .
+ txAMQP is based off the Apache Qpid Python libraries.
