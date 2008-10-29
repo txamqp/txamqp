@@ -17,8 +17,8 @@
 # under the License.
 #
 
-from qpid.content import Content
-import qpid.spec
+from txamqp.content import Content
+import txamqp.spec
 
 from txamqp.protocol import AMQChannel, AMQClient, TwistedDelegate
 
@@ -26,8 +26,7 @@ from twisted.internet import protocol, reactor
 from twisted.trial import unittest
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue, DeferredQueue, DeferredLock
 from twisted.python import failure
-from qpid.peer import Closed
-from qpid.queue import Empty
+from txamqp.queue import Empty
 
 class TestBase(unittest.TestCase):
 
@@ -36,7 +35,7 @@ class TestBase(unittest.TestCase):
 
         self.host = 'localhost'
         self.port = 5672
-        self.spec = '../specs/amqp.0-8.xml'
+        self.spec = '../specs/qpid/amqp.0-8.xml'
         self.user = 'guest'
         self.password = 'guest'
         self.vhost = 'localhost'
@@ -52,7 +51,7 @@ class TestBase(unittest.TestCase):
 
         delegate = TwistedDelegate()
         onConn = Deferred()
-        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, qpid.spec.load(spec)), onConn)
+        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, txamqp.spec.load(spec)), onConn)
         c = reactor.connectTCP(host, port, f)
         self.connectors.append(c)
         client = yield onConn

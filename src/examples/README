@@ -1,0 +1,36 @@
+Instructions
+============
+
+1. Download Thrift source code [1]
+2. Check if it contains support for Twisted, download and apply
+patch [2] if not.
+3. Compile Thrift with suppport for Python.
+4. Install Thrift.
+5. Generate Thrift Python services:
+    $ thrift --gen py:twisted shared.thrift
+    $ thrift --gen py:twisted tutorial.thrift
+6. Start a server:
+    $ python server.py host port vhost username password path_to_spec
+    Note that you can start as many servers as you want at the same time.
+    Incoming requests will be round-robined and the servers load will be
+    balanced automatically.
+7. Start a client:
+    $ python client.py host port vhost username password path_to_spec
+
+Where:
+- host: The host where the AMQP broker is located.
+- port: The port where the AMQP broker listens on.
+- vhost: The virtual host (depending on your broker configuration, default
+    in most cases is '/').
+- username: The username to log in to the broker (default in most cases
+    is 'guest').
+- password: The username to log in to the broker (default in most cases
+    is 'guest').
+- path_to_spec: The path to the AMQP spec that you want to use. Keep in mind
+    that depending on the broker you use, you will need a different spec:
+    - RabbitMQ 1.4.0: $TXAMQP_PATH/src/specs/standard/amqp0-8.xml
+    - OpenAMQ 1.2d6: $TXAMQP_PATH/src/specs/standard/amqp0-9.xml
+    - Qpid M3 (Java): $TXAMQP_PATH/src/specs/qpid/amqp.0-8.xml
+
+1 - http://incubator.apache.org/thrift/
+2 - http://issues.apache.org/jira/browse/THRIFT-148
