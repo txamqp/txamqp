@@ -11,5 +11,5 @@ setup(
         'txamqp': 'src/txamqp',
         'txamqp.contrib': 'src/txamqp/contrib',
         },
+    url = 'https://launchpad.net/txamqp',
 )
-
