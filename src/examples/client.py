@@ -103,7 +103,8 @@ def prepareClient(client, authentication):
     amqpTransport = TwistedAMQPTransport(channel, servicesExchange, calculatorKey,
         replyTo=responseQueue, replyToField=replyToField)
     pfactory = TBinaryProtocol.TBinaryProtocolFactory()
-    thriftClient = tutorial.Calculator.Client(amqpTransport, pfactory)
+    tm = TTwisted.TwistedMemoryBuffer(amqpTransport)
+    thriftClient = tutorial.Calculator.Client(tm, pfactory)
 
     reply = yield channel.basic_consume(queue=responseQueue)
     queue = yield client.queue(reply.consumer_tag)
