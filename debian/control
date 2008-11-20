@@ -10,7 +10,7 @@ Package: python-txamqp
 Architecture: all
 Replaces: fluidinfo-twisted-amqp
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}
-Suggests: thrift
+Recommends: python-thrift
 XB-Python-Version: ${python:Versions}
 Description: An AMQP library for Twisted
  A Python library for connecting, sending and receiving messages
