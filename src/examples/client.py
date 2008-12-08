@@ -37,40 +37,6 @@ def gotCalculateErrors(error):
     print "Got an error"
     print error.value.why
 
-def gotClient(txclient):
-    client = txclient.client
-    
-    d1 = client.ping().addCallback(gotPing)
-
-    d2 = client.add(1, 2).addCallback(gotAddResults)
-
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.ADD})
-
-    d3 = client.calculate(1, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
-    
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.SUBTRACT})
-    
-    d4 = client.calculate(2, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
-
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.MULTIPLY})
-    
-    d5 = client.calculate(3, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
-
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.DIVIDE})
-    
-    d6 = client.calculate(4, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
-
-    # This will fire an errback
-    w = Work({'num1': 2, 'num2': 0, 'op': Operation.DIVIDE})
-    
-    d7 = client.calculate(5, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
-
-    d8 = client.zip()
-
-    dl = defer.DeferredList([d1, d2, d3, d4, d5, d6, d7, d8])
-
-    dl.addCallback(lambda _: reactor.stop())
-
 def parseClientMessage(msg, channel, queue, pfactory, thriftClient):
     deliveryTag = msg.delivery_tag
     tr = TTransport.TMemoryBuffer(msg.content.body)
