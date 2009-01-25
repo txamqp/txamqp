@@ -135,9 +135,7 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
                 raise GarbageException('frame error: expected %r, got %r' % (self.FRAME_END, end))
             frame = Frame(channel, payload)
             return frame, s.read()
-        except EOF:
-            return data
-        except struct.error:
+        except:
             return data
 
     def setRawMode(self):
