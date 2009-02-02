@@ -9,7 +9,7 @@ XS-Python-Version: 2.5
 Package: python-txamqp
 Architecture: all
 Replaces: fluidinfo-twisted-amqp
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-twisted-core
 Recommends: python-thrift
 XB-Python-Version: ${python:Versions}
 Description: An AMQP library for Twisted
