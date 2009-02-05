@@ -100,6 +100,7 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
 
     frame_mode = False
     MAX_LENGTH = 16384
+    HEADER_LENGTH = 1 + 2 + 4 + 1
     __buffer = ''
 
     def __init__(self, spec):
@@ -122,21 +123,18 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
         data = s.getvalue()
         return data
 
-    # packs a frame, see qpid.connection.Connection#read
+    # unpacks a frame, see qpid.connection.Connection#read
     def _unpackFrame(self, data):
-        try:
-            s = StringIO(data)
-            c = Codec(s)
-            frameType = spec.pythonize(self.spec.constants.byid[c.decode_octet()].name)
-            channel = c.decode_short()
-            payload = Frame.DECODERS[frameType].decode(self.spec, c)
-            end = c.decode_octet()
-            if end != self.FRAME_END:
-                raise GarbageException('frame error: expected %r, got %r' % (self.FRAME_END, end))
-            frame = Frame(channel, payload)
-            return frame, s.read()
-        except:
-            return data
+        s = StringIO(data)
+        c = Codec(s)
+        frameType = spec.pythonize(self.spec.constants.byid[c.decode_octet()].name)
+        channel = c.decode_short()
+        payload = Frame.DECODERS[frameType].decode(self.spec, c)
+        end = c.decode_octet()
+        if end != self.FRAME_END:
+            raise GarbageException('frame error: expected %r, got %r' % (self.FRAME_END, end))
+        frame = Frame(channel, payload)
+        return frame
 
     def setRawMode(self):
         self.frame_mode = False
@@ -149,17 +147,23 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
     def dataReceived(self, data):
         self.__buffer = self.__buffer + data
         while self.frame_mode and not self.paused:
-            try:
-                frame, self.__buffer = self._unpackFrame(self.__buffer)
-            except ValueError:
-                if len(self.__buffer) > self.MAX_LENGTH:
-                    frame, self.__buffer = self.__buffer, ''
-                    return self.frameLengthExceeded(frame)
-                break
-            else:
-                why = self.frameReceived(frame)
-                if why or self.transport and self.transport.disconnecting:
-                    return why
+            sz = len(self.__buffer) - self.HEADER_LENGTH
+            if sz >= 0:
+                length, = struct.unpack("!I", self.__buffer[3:7]) # size = 4 bytes
+                if sz >= length:
+                    packet = self.__buffer[:self.HEADER_LENGTH + length]
+                    self.__buffer = self.__buffer[self.HEADER_LENGTH + length:]
+                    frame = self._unpackFrame(packet)
+
+                    why = self.frameReceived(frame)
+                    if why or self.transport and self.transport.disconnecting:
+                        return why
+                    else:
+                        continue
+            if len(self.__buffer) > self.MAX_LENGTH:
+                frame, self.__buffer = self.__buffer, ''
+                return self.frameLengthExceeded(frame)
+            break
         else:
             if not self.paused:
                 data = self.__buffer
