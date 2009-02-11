@@ -11,11 +11,14 @@ class TwistedEvent(object):
         self.alreadyCalled = False
 
     def set(self):
-        deferred, self.deferred = self.deferred, defer.Deferred()
-        deferred.callback(None)
+        self.deferred.callback(True)
 
     def wait(self):
         return self.deferred
+
+    def reset(self):
+        deferred, self.deferred = self.deferred, defer.Deferred()
+        deferred.callback(True)
 
 class TwistedDelegate(Delegate):
 
@@ -40,4 +43,4 @@ class TwistedDelegate(Delegate):
 
     def close(self, reason):
         self.client.closed = True
-        self.client.started.set()
+        self.client.started.reset()

@@ -13,9 +13,11 @@ from twisted.internet import reactor, defer
 from twisted.internet.protocol import ClientCreator
 
 import txamqp.spec
-from txamqp.protocol import AMQClient
 from txamqp.client import TwistedDelegate
-from txamqp.contrib.thrift import TwistedAMQPTransport
+from txamqp.contrib.thrift.transport import TwistedAMQPTransport
+from txamqp.contrib.thrift.protocol import ThriftAMQClient
+
+from zope.interface import implements
 
 servicesExchange = "services"
 responsesExchange = "responses"
@@ -23,6 +25,7 @@ calculatorQueue = "calculator_pool"
 calculatorKey = "calculator"
 
 class CalculatorHandler(object):
+    implements(tutorial.Calculator.Iface)
 
     operations = {
         Operation.ADD: int.__add__,
@@ -35,7 +38,7 @@ class CalculatorHandler(object):
         # Just assume that it may take a long time
         results = self.operations[w.op](w.num1, w.num2)
         d = defer.Deferred()
-        reactor.callLater(3, d.callback, results)
+        reactor.callLater(0, d.callback, results)
         return d
 
     def ping(self):
@@ -50,30 +53,14 @@ class CalculatorHandler(object):
         try:
             return self._dispatchWork(w)
         except Exception, e:
-            return defer.fail(InvalidOperation({'logid': logid, 'why': e.message}))
+            return defer.fail(InvalidOperation(what=logid, why=e.message))
             
     def zip(self):
         print "zip() called from client"
 
-def parseServerMessage(msg, channel, queue, processor, pfactory):
-    deliveryTag = msg.delivery_tag
-    try:
-        replyTo = msg.content[replyToField]
-    except KeyError:
-        replyTo = None
-    tr = TwistedAMQPTransport(channel, responsesExchange, routingKey=replyTo)
-    tmi = TTransport.TMemoryBuffer(msg.content.body)
-    tmo = TTwisted.TwistedMemoryBuffer(tr)
-    iprot = pfactory.getProtocol(tmi)
-    oprot = pfactory.getProtocol(tmo)
-    processor.process(iprot, oprot)
-    channel.basic_ack(deliveryTag, True)
-    queue.get().addCallback(parseServerMessage, channel, queue, processor,
-        pfactory)
-
 @defer.inlineCallbacks
-def prepareClient(client, authentication):
-    yield client.start(authentication)
+def prepareClient(client, username, password):
+    yield client.authenticate(username, password)
 
     channel = yield client.channel(1)
 
@@ -90,8 +77,8 @@ def prepareClient(client, authentication):
 
     reply = yield channel.basic_consume(queue=calculatorQueue)
     queue = yield client.queue(reply.consumer_tag)
-    queue.get().addCallback(parseServerMessage, channel, queue, processor,
-        pfactory)
+    queue.get().addCallback(client.parseServerMessage, channel, responsesExchange,
+        queue, processor, pfactory, pfactory)
 
 if __name__ == '__main__':
     import sys
@@ -112,15 +99,7 @@ if __name__ == '__main__':
 
     print 'Starting the server...'
 
-    d = ClientCreator(reactor, AMQClient, delegate, vhost,
+    d = ClientCreator(reactor, ThriftAMQClient, delegate, vhost,
         spec).connectTCP(host, port)
-
-    if (spec.major, spec.minor) == (8, 0):
-        authentication = {"LOGIN": username, "PASSWORD": password}
-        replyToField = "reply to"
-    else:
-        authentication = "\0" + username + "\0" + password
-        replyToField = "reply-to"
-
-    d.addCallback(prepareClient, authentication)
+    d.addCallback(prepareClient, username, password)
     reactor.run()

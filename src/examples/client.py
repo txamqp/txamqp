@@ -13,9 +13,9 @@ from twisted.internet import reactor, defer
 from twisted.internet.protocol import ClientCreator
 
 import txamqp.spec
-from txamqp.protocol import AMQClient
 from txamqp.client import TwistedDelegate
-from txamqp.contrib.thrift import TwistedAMQPTransport
+from txamqp.contrib.thrift.transport import TwistedAMQPTransport
+from txamqp.contrib.thrift.protocol import ThriftAMQClient
 
 servicesExchange = "services"
 responsesExchange = "responses"
@@ -37,21 +37,9 @@ def gotCalculateErrors(error):
     print "Got an error"
     print error.value.why
 
-def parseClientMessage(msg, channel, queue, pfactory, thriftClient):
-    deliveryTag = msg.delivery_tag
-    tr = TTransport.TMemoryBuffer(msg.content.body)
-    iprot = pfactory.getProtocol(tr)
-    (fname, mtype, rseqid) = iprot.readMessageBegin()
-
-    m = getattr(thriftClient, 'recv_' + fname)
-    m(iprot, mtype, rseqid)
-
-    channel.basic_ack(deliveryTag, True)
-    queue.get().addCallback(parseClientMessage, channel, queue, pfactory, thriftClient)
-
 @defer.inlineCallbacks
-def prepareClient(client, authentication):
-    yield client.start(authentication)
+def prepareClient(client, username, password):
+    yield client.authenticate(username, password)
 
     channel = yield client.channel(1)
 
@@ -59,22 +47,11 @@ def prepareClient(client, authentication):
     yield channel.exchange_declare(exchange=servicesExchange, type="direct")
     yield channel.exchange_declare(exchange=responsesExchange, type="direct")
 
-    reply = yield channel.queue_declare(exclusive=True, auto_delete=True)
-
-    responseQueue = reply.queue
-
-    yield channel.queue_bind(queue=responseQueue, exchange=responsesExchange,
-        routing_key=responseQueue)
-
-    amqpTransport = TwistedAMQPTransport(channel, servicesExchange, calculatorKey,
-        replyTo=responseQueue, replyToField=replyToField)
     pfactory = TBinaryProtocol.TBinaryProtocolFactory()
-    tm = TTwisted.TwistedMemoryBuffer(amqpTransport)
-    thriftClient = tutorial.Calculator.Client(tm, pfactory)
-
-    reply = yield channel.basic_consume(queue=responseQueue)
-    queue = yield client.queue(reply.consumer_tag)
-    queue.get().addCallback(parseClientMessage, channel, queue, pfactory, thriftClient)
+    thriftClient = yield client.createThriftClient(responsesExchange,
+        servicesExchange, calculatorKey, tutorial.Calculator.Client,
+        iprot_factory=pfactory, oprot_factory=pfactory)
+    
     defer.returnValue(thriftClient)
 
 def gotClient(client):
@@ -82,26 +59,31 @@ def gotClient(client):
 
     d2 = client.add(1, 2).addCallback(gotAddResults)
 
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.ADD})
+    w = Work(num1=2, num2=3, op=Operation.ADD)
 
-    d3 = client.calculate(1, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
+    d3 = client.calculate(1, w).addCallbacks(gotCalculateResults,
+        gotCalculateErrors)
 
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.SUBTRACT})
+    w = Work(num1=2, num2=3, op=Operation.SUBTRACT)
 
-    d4 = client.calculate(2, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
+    d4 = client.calculate(2, w).addCallbacks(gotCalculateResults,
+        gotCalculateErrors)
 
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.MULTIPLY})
+    w = Work(num1=2, num2=3, op=Operation.MULTIPLY)
 
-    d5 = client.calculate(3, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
+    d5 = client.calculate(3, w).addCallbacks(gotCalculateResults,
+        gotCalculateErrors)
 
-    w = Work({'num1': 2, 'num2': 3, 'op': Operation.DIVIDE})
+    w = Work(num1=2, num2=3, op=Operation.DIVIDE)
 
-    d6 = client.calculate(4, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
+    d6 = client.calculate(4, w).addCallbacks(gotCalculateResults,
+        gotCalculateErrors)
 
     # This will fire an errback
-    w = Work({'num1': 2, 'num2': 0, 'op': Operation.DIVIDE})
+    w = Work(num1=2, num2=0, op=Operation.DIVIDE)
 
-    d7 = client.calculate(5, w).addCallbacks(gotCalculateResults, gotCalculateErrors)
+    d7 = client.calculate(5, w).addCallbacks(gotCalculateResults,
+        gotCalculateErrors)
 
     d8 = client.zip()
 
@@ -126,15 +108,7 @@ if __name__ == '__main__':
 
     delegate = TwistedDelegate()
 
-    d = ClientCreator(reactor, AMQClient, delegate, vhost,
+    d = ClientCreator(reactor, ThriftAMQClient, delegate, vhost,
         spec).connectTCP(host, port)
-
-    if (spec.major, spec.minor) == (8, 0):
-        authentication = {"LOGIN": username, "PASSWORD": password}
-        replyToField = "reply to"
-    else:
-        authentication = "\0" + username + "\0" + password
-        replyToField = "reply-to"
-
-    d.addCallback(prepareClient, authentication).addCallback(gotClient)
+    d.addCallback(prepareClient, username, password).addCallback(gotClient)
     reactor.run()

@@ -226,6 +226,9 @@ class AMQClient(FrameReceiver):
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
 
+    def check_0_8(self):
+        return (self.spec.minor, self.spec.major) == (0, 8)
+
     @defer.inlineCallbacks
     def channel(self, id):
         yield self.channelLock.acquire()
@@ -295,6 +298,15 @@ class AMQClient(FrameReceiver):
     def processFrame(self, frame):
         ch = yield self.channel(frame.channel)
         ch.dispatch(frame, self.work)
+
+    @defer.inlineCallbacks
+    def authenticate(self, username, password, mechanism='AMQPLAIN', locale='en_US'):
+        if self.check_0_8():
+            response = {"LOGIN": username, "PASSWORD": password}
+        else:
+            response = "\0" + username + "\0" + password
+
+        yield self.start(response, mechanism, locale)
 
     @defer.inlineCallbacks
     def start(self, response, mechanism='AMQPLAIN', locale='en_US'):
