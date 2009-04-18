@@ -25,6 +25,7 @@ class TwistedDelegate(Delegate):
                                locale=self.client.locale)
 
     def connection_tune(self, ch, msg):
+        self.client.MAX_LENGTH = msg.frame_max
         ch.connection_tune_ok(*msg.fields)
         self.client.started.set()
 

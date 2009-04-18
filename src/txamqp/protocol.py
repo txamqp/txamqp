@@ -99,7 +99,7 @@ class AMQChannel(object):
 class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
 
     frame_mode = False
-    MAX_LENGTH = 16384
+    MAX_LENGTH = 4096
     HEADER_LENGTH = 1 + 2 + 4 + 1
     __buffer = ''
 
