@@ -255,6 +255,8 @@ class AMQClient(FrameReceiver):
     def close(self, reason):
         for ch in self.channels.values():
             ch.close(reason)
+        for q in self.queues.values():
+            q.close()
         self.delegate.close(reason)
 
     def writer(self, frame):
