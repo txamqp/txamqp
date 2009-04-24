@@ -218,6 +218,7 @@ class AMQClient(FrameReceiver):
         self.work = defer.DeferredQueue()
 
         self.started = TwistedEvent()
+        self.connectionLostEvent = TwistedEvent()
 
         self.queueLock = defer.DeferredLock()
 
@@ -287,6 +288,9 @@ class AMQClient(FrameReceiver):
     def connectionMade(self):
         self.sendInitString()
         self.setFrameMode()
+
+    def connectionLost(self, reason):
+        self.connectionLostEvent.set()
 
     def frameReceived(self, frame):
         self.processFrame(frame)
