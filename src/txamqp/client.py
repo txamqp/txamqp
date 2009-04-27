@@ -26,7 +26,8 @@ class TwistedDelegate(Delegate):
 
     def connection_tune(self, ch, msg):
         self.client.MAX_LENGTH = msg.frame_max
-        ch.connection_tune_ok(*msg.fields)
+        args = msg.channel_max, msg.frame_max, self.client.heartbeatInterval
+        ch.connection_tune_ok(*args)
         self.client.started.set()
 
     @defer.inlineCallbacks

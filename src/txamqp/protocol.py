@@ -1,16 +1,17 @@
 # coding: utf-8
 from twisted.python import log
-from twisted.internet import defer, protocol
+from twisted.internet import defer, protocol, reactor
 from twisted.protocols import basic
 from txamqp import spec
 from txamqp.codec import Codec, EOF
-from txamqp.connection import Header, Frame, Method, Body
+from txamqp.connection import Header, Frame, Method, Body, Heartbeat
 from txamqp.message import Message
 from txamqp.content import Content
 from txamqp.queue import TimeoutDeferredQueue, Empty, Closed as QueueClosed
 from txamqp.client import TwistedEvent, TwistedDelegate, Closed
 from cStringIO import StringIO
 import struct
+from time import time
 
 class GarbageException(Exception):
     pass
@@ -219,6 +220,8 @@ class AMQClient(FrameReceiver):
 
         self.started = TwistedEvent()
         self.connectionLostEvent = TwistedEvent()
+        self.lastSent = time()
+        self.lastReceived = time()
 
         self.queueLock = defer.DeferredLock()
 
@@ -226,6 +229,8 @@ class AMQClient(FrameReceiver):
 
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
+        self.started.wait().addCallback(self.heartbeatHandler)
+        self.heartbeatInterval = 5 # Hardcoded for now
 
     @defer.inlineCallbacks
     def channel(self, id):
@@ -295,10 +300,16 @@ class AMQClient(FrameReceiver):
     def frameReceived(self, frame):
         self.processFrame(frame)
 
+    def sendFrame(self, frame):
+        self.lastSent = time()
+        FrameReceiver.sendFrame(self, frame)
+
     @defer.inlineCallbacks
     def processFrame(self, frame):
+        self.lastReceived = time()
         ch = yield self.channel(frame.channel)
-        ch.dispatch(frame, self.work)
+        if frame.payload.type != Frame.HEARTBEAT:
+            ch.dispatch(frame, self.work)
 
     @defer.inlineCallbacks
     def start(self, response, mechanism='AMQPLAIN', locale='en_US'):
@@ -310,3 +321,11 @@ class AMQClient(FrameReceiver):
 
         channel0 = yield self.channel(0)
         yield channel0.connection_open(self.vhost)
+
+    def heartbeatHandler (self, dummy=None):
+        now = time()
+        if self.lastSent + self.heartbeatInterval < now:
+            self.sendFrame(Frame(0, Heartbeat()))
+        if self.lastReceived + self.heartbeatInterval * 3 < now:
+            self.transport.loseConnection()
+        reactor.callLater(self.heartbeatInterval, self.heartbeatHandler)
