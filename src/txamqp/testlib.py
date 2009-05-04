@@ -39,6 +39,9 @@ class TestBase(unittest.TestCase):
         self.user = 'guest'
         self.password = 'guest'
         self.vhost = 'localhost'
+        self.queues = []
+        self.exchanges = []
+        self.connectors = []
 
     @inlineCallbacks
     def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None):
@@ -56,16 +59,11 @@ class TestBase(unittest.TestCase):
         self.connectors.append(c)
         client = yield onConn
 
-        yield client.start({"LOGIN": user, "PASSWORD": password})
+        yield client.authenticate(user, password)
         returnValue(client)
  
     @inlineCallbacks
     def setUp(self):
-        self.queues = []
-        self.exchanges = []
-
-        self.connectors = []
-
         self.client = yield self.connect()
 
         self.channel = yield self.client.channel(1)
