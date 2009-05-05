@@ -257,3 +257,15 @@ class QueueTests(TestBase):
             self.assertChannelException(404, e.args[0])
 
 
+    @inlineCallbacks
+    def test_close_queue(self):
+        from txamqp.queue import Closed as QueueClosed
+        channel = self.channel
+
+        reply = yield channel.queue_declare(queue="test-queue")
+        reply = yield channel.basic_consume(queue="test-queue")
+
+        queue = yield self.client.queue(reply.consumer_tag)
+        d = self.assertFailure(queue.get(timeout=1), QueueClosed)
+        self.client.close(None)
+        yield d

@@ -232,6 +232,9 @@ class AMQClient(FrameReceiver):
         self.started.wait().addCallback(self.heartbeatHandler)
         self.heartbeatInterval = 5 # Hardcoded for now
 
+    def check_0_8(self):
+        return (self.spec.minor, self.spec.major) == (0, 8)
+
     @defer.inlineCallbacks
     def channel(self, id):
         yield self.channelLock.acquire()
@@ -261,6 +264,8 @@ class AMQClient(FrameReceiver):
     def close(self, reason):
         for ch in self.channels.values():
             ch.close(reason)
+        for q in self.queues.values():
+            q.close()
         self.delegate.close(reason)
 
     def writer(self, frame):
@@ -310,6 +315,15 @@ class AMQClient(FrameReceiver):
         ch = yield self.channel(frame.channel)
         if frame.payload.type != Frame.HEARTBEAT:
             ch.dispatch(frame, self.work)
+
+    @defer.inlineCallbacks
+    def authenticate(self, username, password, mechanism='AMQPLAIN', locale='en_US'):
+        if self.check_0_8():
+            response = {"LOGIN": username, "PASSWORD": password}
+        else:
+            response = "\0" + username + "\0" + password
+
+        yield self.start(response, mechanism, locale)
 
     @defer.inlineCallbacks
     def start(self, response, mechanism='AMQPLAIN', locale='en_US'):
