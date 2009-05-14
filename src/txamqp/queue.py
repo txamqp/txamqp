@@ -11,6 +11,12 @@ class TimeoutDeferredQueue(DeferredQueue):
 
     END = object()
 
+    def __init__(self, clock=None):
+        if clock is None:
+            from twisted.internet import reactor as clock
+        self.clock = clock
+        DeferredQueue.__init__(self)
+
     def _timeout(self, deferred):
         if not deferred.called:
             if deferred in self.waiting:
@@ -32,8 +38,7 @@ class TimeoutDeferredQueue(DeferredQueue):
 
         call_id = None
         if timeout:
-            from twisted.internet import reactor
-            call_id = reactor.callLater(timeout, self._timeout, deferred)
+            call_id = self.clock.callLater(timeout, self._timeout, deferred)
         deferred.addCallback(self._raiseIfClosed, call_id)
 
         return deferred
