@@ -97,7 +97,7 @@ class ThriftAMQClient(AMQClient):
         d = processor.process(iprot, oprot)
         channel.basic_ack(deliveryTag, True)
 
-        return queue.get().addCallback(self.parseServerMessage, channel,
+        queue.get().addCallback(self.parseServerMessage, channel,
             exchange, queue, processor, iprot_factory, oprot_factory)
 
 
