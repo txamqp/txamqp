@@ -11,13 +11,21 @@ class TimeoutDeferredQueue(DeferredQueue):
 
     END = object()
 
+    def __init__(self, clock=None):
+        if clock is None:
+            from twisted.internet import reactor as clock
+        self.clock = clock
+        DeferredQueue.__init__(self)
+
     def _timeout(self, deferred):
         if not deferred.called:
             if deferred in self.waiting:
                 self.waiting.remove(deferred)
                 deferred.errback(Empty())
 
-    def _raiseIfClosed(self, result):
+    def _raiseIfClosed(self, result, call_id):
+        if call_id is not None:
+            call_id.cancel()
         if result == TimeoutDeferredQueue.END:
             self.put(TimeoutDeferredQueue.END)
 
@@ -28,10 +36,11 @@ class TimeoutDeferredQueue(DeferredQueue):
     def get(self, timeout=None):
         deferred = DeferredQueue.get(self)
 
-        deferred.addCallback(self._raiseIfClosed)
-
+        call_id = None
         if timeout:
-            deferred.setTimeout(timeout, timeoutFunc=self._timeout)
+            call_id = self.clock.callLater(timeout, self._timeout, deferred)
+        deferred.addCallback(self._raiseIfClosed, call_id)
+
         return deferred
 
     def close(self):
