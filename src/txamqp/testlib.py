@@ -43,7 +43,7 @@ class skipBroker(object):
         self.supporterBrokers = supporterBrokers
 
     def __call__(self, f):
-        if _get_broker not in self.supporterBrokers:
+        if _get_broker() not in self.supporterBrokers:
             f.skip = "Not supported for this broker."
         return f
 
