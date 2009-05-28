@@ -19,13 +19,14 @@
 from txamqp.client import Closed
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase
+from txamqp.testlib import TestBase, skipBroker, QPID
 
 from twisted.internet.defer import inlineCallbacks
 
 class BasicTests(TestBase):
     """Tests for 'methods' on the amqp basic 'class'"""
 
+    @skipBroker(QPID)
     @inlineCallbacks
     def test_consume_no_local(self):
         """
@@ -248,6 +249,7 @@ class BasicTests(TestBase):
             self.fail("Got unexpected message in original queue: " + extra.content.body)
         except Empty: None
         
+    @skipBroker(QPID)
     @inlineCallbacks
     def test_qos_prefetch_count(self):
         """
@@ -289,6 +291,7 @@ class BasicTests(TestBase):
             self.fail("Got unexpected 11th message in original queue: " + extra.content.body)
         except Empty: None
 
+    @skipBroker(QPID)
     @inlineCallbacks
     def test_qos_prefetch_size(self):
         """
