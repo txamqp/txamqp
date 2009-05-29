@@ -21,10 +21,10 @@ class ThriftAMQClient(AMQClient):
 
     @defer.inlineCallbacks
     def createThriftClient(self, responsesExchange, serviceExchange,
-        routingKey, clientClass, responseQueue=None, iprot_factory=None,
+        routingKey, clientClass, channel=1, responseQueue=None, iprot_factory=None,
         oprot_factory=None):
 
-        channel = yield self.channel(1)
+        channel = yield self.channel(channel)
 
         if responseQueue is None:
             reply = yield channel.queue_declare(exclusive=True,
