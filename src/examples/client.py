@@ -6,7 +6,7 @@ import sys, os.path
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.split(sys.argv[0])[0]), 'gen-py'))
 import tutorial.Calculator
 from tutorial.ttypes import *
-from thrift.transport import TTwisted
+from thrift.transport import TTwisted, TTransport
 from thrift.protocol import TBinaryProtocol
 
 from twisted.internet import reactor, defer
@@ -34,8 +34,14 @@ def gotCalculateResults(results):
     print results
 
 def gotCalculateErrors(error):
-    print "Got an error"
+    error.trap(InvalidOperation)
+    print "Got a calculator error"
     print error.value.why
+
+def gotTransportError(error):
+    error.trap(TTransport.TTransportException)
+    print "Got an AMQP unroutable message error:"
+    print error.value.message
 
 @defer.inlineCallbacks
 def prepareClient(client, username, password):
@@ -48,6 +54,11 @@ def prepareClient(client, username, password):
     yield channel.exchange_declare(exchange=responsesExchange, type="direct")
 
     pfactory = TBinaryProtocol.TBinaryProtocolFactory()
+
+    # To trigger an unroutable message error (caught in the above
+    # gotTransportError errback), change the routing key (i.e.,
+    # calculatorKey) in the following to be something invalid, like
+    # calculatorKey + 'xxx'.
     thriftClient = yield client.createThriftClient(responsesExchange,
         servicesExchange, calculatorKey, tutorial.Calculator.Client,
         iprot_factory=pfactory, oprot_factory=pfactory)
@@ -55,35 +66,35 @@ def prepareClient(client, username, password):
     defer.returnValue(thriftClient)
 
 def gotClient(client):
-    d1 = client.ping().addCallback(gotPing)
+    d1 = client.ping().addCallback(gotPing).addErrback(gotTransportError)
 
-    d2 = client.add(1, 2).addCallback(gotAddResults)
+    d2 = client.add(1, 2).addCallback(gotAddResults).addErrback(gotTransportError)
 
     w = Work(num1=2, num2=3, op=Operation.ADD)
 
     d3 = client.calculate(1, w).addCallbacks(gotCalculateResults,
-        gotCalculateErrors)
+        gotCalculateErrors).addErrback(gotTransportError)
 
     w = Work(num1=2, num2=3, op=Operation.SUBTRACT)
 
     d4 = client.calculate(2, w).addCallbacks(gotCalculateResults,
-        gotCalculateErrors)
+        gotCalculateErrors).addErrback(gotTransportError)
 
     w = Work(num1=2, num2=3, op=Operation.MULTIPLY)
 
     d5 = client.calculate(3, w).addCallbacks(gotCalculateResults,
-        gotCalculateErrors)
+        gotCalculateErrors).addErrback(gotTransportError)
 
     w = Work(num1=2, num2=3, op=Operation.DIVIDE)
 
     d6 = client.calculate(4, w).addCallbacks(gotCalculateResults,
-        gotCalculateErrors)
+        gotCalculateErrors).addErrback(gotTransportError)
 
     # This will fire an errback
     w = Work(num1=2, num2=0, op=Operation.DIVIDE)
 
     d7 = client.calculate(5, w).addCallbacks(gotCalculateResults,
-        gotCalculateErrors)
+        gotCalculateErrors).addErrback(gotTransportError)
 
     d8 = client.zip()
 

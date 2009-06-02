@@ -220,6 +220,7 @@ class AMQClient(FrameReceiver):
         self.started = TwistedEvent()
 
         self.queueLock = defer.DeferredLock()
+        self.basic_return_queue = TimeoutDeferredQueue()
 
         self.queues = {}
 

@@ -16,4 +16,4 @@ class TwistedAMQPTransport(TTwisted.TMessageSenderTransport):
             content[self.replyToField] = self.replyTo
 
         self.channel.basic_publish(exchange=self.exchange,
-            routing_key=self.routingKey, content=content)
+            routing_key=self.routingKey, content=content, immediate=True)

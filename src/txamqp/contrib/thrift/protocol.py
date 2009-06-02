@@ -53,6 +53,10 @@ class ThriftAMQClient(AMQClient):
         queue = yield self.queue(reply.consumer_tag)
         queue.get().addCallback(self.parseClientMessage, channel, queue,
             thriftClient, iprot_factory=iprot_factory)
+        
+        self.basic_return_queue.get().addCallback(
+            self.parseClientUnrouteableMessage, channel,
+            self.basic_return_queue, thriftClient, iprot_factory=iprot_factory)
 
         defer.returnValue(thriftClient)
 
@@ -71,6 +75,32 @@ class ThriftAMQClient(AMQClient):
 
         channel.basic_ack(deliveryTag, True)
         queue.get().addCallback(self.parseClientMessage, channel, queue,
+            thriftClient, iprot_factory=iprot_factory)
+
+    def parseClientUnrouteableMessage(self, msg, channel, queue, thriftClient,
+        iprot_factory=None):
+        tr = TTransport.TMemoryBuffer(msg.content.body)
+        if iprot_factory is None:
+            iprot = self.factory.iprot_factory.getProtocol(tr)
+        else:
+            iprot = iprot_factory.getProtocol(tr)
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+
+        try:
+            d = thriftClient._reqs.pop(rseqid)
+        except KeyError:
+            # KeyError will occur if the remote Thrift method is oneway,
+            # since there is no outstanding local request deferred for
+            # oneway calls.
+            pass
+        else:
+            d.errback(TTransport.TTransportException(
+                type=TTransport.TTransportException.NOT_OPEN,
+                message='Unrouteable message, routing key = %r calling function %r'
+                % (msg.routing_key, fname)))
+
+        queue.get().addCallback(
+            self.parseClientUnrouteableMessage, channel, queue,
             thriftClient, iprot_factory=iprot_factory)
 
     def parseServerMessage(self, msg, channel, exchange, queue, processor,
