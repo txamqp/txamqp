@@ -6,10 +6,11 @@ setup(
     version = '0.2',
     author = 'Esteve Fernandez',
     author_email = 'esteve@fluidinfo.com',
-    packages = ['txamqp', 'txamqp.contrib', ],
+    packages = ['txamqp', 'txamqp.contrib', 'txamqp.contrib.thrift'],
     package_dir = {
         'txamqp': 'src/txamqp',
         'txamqp.contrib': 'src/txamqp/contrib',
+        'txamqp.contrib.thrift': 'src/txamqp/contrib/thrift',
         },
     url = 'https://launchpad.net/txamqp',
 )
