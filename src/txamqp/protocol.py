@@ -201,7 +201,7 @@ class AMQClient(FrameReceiver):
 
     channelClass = AMQChannel
 
-    def __init__(self, delegate, vhost, *args, **kwargs):
+    def __init__(self, delegate, vhost, heartbeat=0, *args, **kwargs):
         FrameReceiver.__init__(self, *args, **kwargs)
         self.delegate = delegate
 
@@ -230,7 +230,7 @@ class AMQClient(FrameReceiver):
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
         self.started.wait().addCallback(self.heartbeatHandler)
-        self.heartbeatInterval = 5 # Hardcoded for now
+        self.heartbeatInterval = heartbeat
 
     def check_0_8(self):
         return (self.spec.minor, self.spec.major) == (0, 8)
