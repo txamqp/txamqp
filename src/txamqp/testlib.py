@@ -54,7 +54,7 @@ class TestBase(unittest.TestCase):
 
         delegate = TwistedDelegate()
         onConn = Deferred()
-        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, txamqp.spec.load(spec)), onConn)
+        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, spec=txamqp.spec.load(spec)), onConn)
         c = reactor.connectTCP(host, port, f)
         self.connectors.append(c)
         client = yield onConn

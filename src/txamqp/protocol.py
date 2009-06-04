@@ -229,8 +229,10 @@ class AMQClient(FrameReceiver):
 
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
-        self.started.wait().addCallback(self.heartbeatHandler)
         self.heartbeatInterval = heartbeat
+        self.pendingHeartbeat = None
+        if self.heartbeatInterval > 0:
+            self.started.wait().addCallback(self.heartbeatHandler)
 
     def check_0_8(self):
         return (self.spec.minor, self.spec.major) == (0, 8)
@@ -300,6 +302,9 @@ class AMQClient(FrameReceiver):
         self.setFrameMode()
 
     def connectionLost(self, reason):
+        if self.pendingHeartbeat is not None and self.pendingHeartbeat.active():
+            self.pendingHeartbeat.cancel()
+            self.pendingHeartbeat = None
         self.connectionLostEvent.set()
 
     def frameReceived(self, frame):
@@ -342,4 +347,8 @@ class AMQClient(FrameReceiver):
             self.sendFrame(Frame(0, Heartbeat()))
         if self.lastReceived + self.heartbeatInterval * 3 < now:
             self.transport.loseConnection()
-        reactor.callLater(self.heartbeatInterval, self.heartbeatHandler)
+        tple = None
+        if self.transport.connected:
+            tple = reactor.callLater(self.heartbeatInterval, self.heartbeatHandler)
+        self.pendingHeartbeat = tple
+            
