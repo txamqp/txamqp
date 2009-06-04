@@ -39,22 +39,26 @@ class TestBase(unittest.TestCase):
         self.user = 'guest'
         self.password = 'guest'
         self.vhost = 'localhost'
+        self.heartbeat = 0
         self.queues = []
         self.exchanges = []
         self.connectors = []
 
     @inlineCallbacks
-    def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None):
+    def connect(self, host=None, port=None, spec=None, user=None,
+                           password=None, vhost=None, heartbeat=None):
         host = host or self.host
         port = port or self.port
         spec = spec or self.spec
         user = user or self.user
         password = password or self.password
         vhost = vhost or self.vhost
+        heartbeat = heartbeat or self.heartbeat
 
         delegate = TwistedDelegate()
         onConn = Deferred()
-        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, spec=txamqp.spec.load(spec)), onConn)
+        p = AMQClient(delegate, vhost, heartbeat=heartbeat, spec=txamqp.spec.load(spec))
+        f = protocol._InstanceFactory(reactor, p, onConn)
         c = reactor.connectTCP(host, port, f)
         self.connectors.append(c)
         client = yield onConn
