@@ -2,6 +2,7 @@ from zope.interface import Interface, Attribute
 from txamqp.protocol import AMQClient
 from txamqp.contrib.thrift.transport import TwistedAMQPTransport
 from txamqp.content import Content
+from txamqp.queue import TimeoutDeferredQueue
 
 from twisted.internet import defer
 from twisted.python import log
@@ -19,10 +20,26 @@ class ThriftAMQClient(AMQClient):
         else:
             self.replyToField = "reply-to"
 
+        self.thriftBasicReturnQueueLock = defer.DeferredLock()
+        self.thriftBasicReturnQueues = {}
+
+    @defer.inlineCallbacks
+    def thriftBasicReturnQueue(self, key):
+        yield self.thriftBasicReturnQueueLock.acquire()
+        try:
+            try:
+                q = self.thriftBasicReturnQueues[key]
+            except KeyError:
+                q = TimeoutDeferredQueue()
+                self.thriftBasicReturnQueues[key] = q
+        finally:
+            self.thriftBasicReturnQueueLock.release()
+        defer.returnValue(q)
+
     @defer.inlineCallbacks
     def createThriftClient(self, responsesExchange, serviceExchange,
-        routingKey, clientClass, responseQueue=None, iprot_factory=None,
-        oprot_factory=None):
+                           routingKey, clientClass, responseQueue=None,
+                           iprot_factory=None, oprot_factory=None):
 
         channel = yield self.channel(1)
 
@@ -39,8 +56,11 @@ class ThriftAMQClient(AMQClient):
 
         log.msg("Consuming messages on queue: %s" % responseQueue)
 
-        amqpTransport = TwistedAMQPTransport(channel, serviceExchange,
-            routingKey, replyTo=responseQueue, replyToField=self.replyToField)
+        thriftClientName = clientClass.__name__ + routingKey
+        
+        amqpTransport = TwistedAMQPTransport(
+            channel, serviceExchange, routingKey, clientName=thriftClientName,
+            replyTo=responseQueue, replyToField=self.replyToField)
 
         if iprot_factory is None:
             iprot_factory = self.factory.iprot_factory
@@ -53,15 +73,17 @@ class ThriftAMQClient(AMQClient):
         queue = yield self.queue(reply.consumer_tag)
         queue.get().addCallback(self.parseClientMessage, channel, queue,
             thriftClient, iprot_factory=iprot_factory)
-        
-        self.basic_return_queue.get().addCallback(
-            self.parseClientUnrouteableMessage, channel,
-            self.basic_return_queue, thriftClient, iprot_factory=iprot_factory)
+
+        basicReturnQueue = yield self.thriftBasicReturnQueue(thriftClientName)
+
+        basicReturnQueue.get().addCallback(
+            self.parseClientUnrouteableMessage, channel, basicReturnQueue,
+            thriftClient, iprot_factory=iprot_factory)
 
         defer.returnValue(thriftClient)
 
     def parseClientMessage(self, msg, channel, queue, thriftClient,
-        iprot_factory=None):
+                           iprot_factory=None):
         deliveryTag = msg.delivery_tag
         tr = TTransport.TMemoryBuffer(msg.content.body)
         if iprot_factory is None:
@@ -70,6 +92,12 @@ class ThriftAMQClient(AMQClient):
             iprot = iprot_factory.getProtocol(tr)
         (fname, mtype, rseqid) = iprot.readMessageBegin()
 
+        if rseqid in thriftClient._reqs:
+            # log.msg('Got reply: fname = %r, rseqid = %s, mtype = %r, routing key = %r, client = %r, msg.content.body = %r' % (fname, rseqid, mtype, msg.routing_key, thriftClient, msg.content.body))
+            pass
+        else:
+            log.msg('Missing rseqid! fname = %r, rseqid = %s, mtype = %r, routing key = %r, client = %r, msg.content.body = %r' % (fname, rseqid, mtype, msg.routing_key, thriftClient, msg.content.body))
+            
         method = getattr(thriftClient, 'recv_' + fname)
         method(iprot, mtype, rseqid)
 
@@ -78,13 +106,15 @@ class ThriftAMQClient(AMQClient):
             thriftClient, iprot_factory=iprot_factory)
 
     def parseClientUnrouteableMessage(self, msg, channel, queue, thriftClient,
-        iprot_factory=None):
+                                      iprot_factory=None):
         tr = TTransport.TMemoryBuffer(msg.content.body)
         if iprot_factory is None:
             iprot = self.factory.iprot_factory.getProtocol(tr)
         else:
             iprot = iprot_factory.getProtocol(tr)
         (fname, mtype, rseqid) = iprot.readMessageBegin()
+
+        # log.msg('Got unroutable. fname = %r, rseqid = %s, mtype = %r, routing key = %r, client = %r, msg.content.body = %r' % (fname, rseqid, mtype, msg.routing_key, thriftClient, msg.content.body))
 
         try:
             d = thriftClient._reqs.pop(rseqid)

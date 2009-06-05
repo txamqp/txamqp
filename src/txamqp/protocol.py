@@ -255,7 +255,7 @@ class AMQClient(FrameReceiver):
         finally:
             self.queueLock.release()
         defer.returnValue(q)
- 
+
     def close(self, reason):
         for ch in self.channels.values():
             ch.close(reason)
