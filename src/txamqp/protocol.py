@@ -267,14 +267,12 @@ class AMQClient(FrameReceiver):
         self.sendFrame(frame)
         self.outgoing.get().addCallback(self.writer)
 
-    @defer.inlineCallbacks
     def worker(self, queue):
-        try:
-            yield self.dispatch(queue)
-            queue = yield self.work.get()
-            self.worker(queue)
-        except Exception, e:
-            self.close(e)
+        d = self.dispatch(queue)
+        def cb(ign):
+            self.work.get().addCallback(self.worker)
+        d.addCallback(cb)
+        d.addErrback(self.close)
 
     @defer.inlineCallbacks
     def dispatch(self, queue):
