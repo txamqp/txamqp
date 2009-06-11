@@ -219,7 +219,6 @@ class AMQClient(FrameReceiver):
         self.work = defer.DeferredQueue()
 
         self.started = TwistedEvent()
-        self.connectionLostEvent = TwistedEvent()
         self.lastSent = time()
         self.lastReceived = time()
 
@@ -274,14 +273,12 @@ class AMQClient(FrameReceiver):
         self.sendFrame(frame)
         self.outgoing.get().addCallback(self.writer)
 
-    @defer.inlineCallbacks
     def worker(self, queue):
-        try:
-            yield self.dispatch(queue)
-            queue = yield self.work.get()
-            self.worker(queue)
-        except Exception, e:
-            self.close(e)
+        d = self.dispatch(queue)
+        def cb(ign):
+            self.work.get().addCallback(self.worker)
+        d.addCallback(cb)
+        d.addErrback(self.close)
 
     @defer.inlineCallbacks
     def dispatch(self, queue):
@@ -305,7 +302,6 @@ class AMQClient(FrameReceiver):
         if self.pendingHeartbeat is not None and self.pendingHeartbeat.active():
             self.pendingHeartbeat.cancel()
             self.pendingHeartbeat = None
-        self.connectionLostEvent.set()
 
     def frameReceived(self, frame):
         self.processFrame(frame)
