@@ -24,7 +24,7 @@ Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
 
 from txamqp.queue import Empty
-from txamqp.testlib import TestBase, skipBroker, QPID
+from txamqp.testlib import TestBase, supportedBrokers, QPID, RABBITMQ, OPENAMQ
 from txamqp.content import Content
 from txamqp.client import Closed
 
@@ -109,7 +109,7 @@ class RecommendedTypesRuleTests(TestBase, StandardExchangeVerifier):
         yield self.exchange_declare(0, exchange="t", type="topic")
         yield self.verifyTopicExchange("t")
 
-    @skipBroker(QPID)
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def testHeaders(self):
         """Declare and test a headers exchange"""
@@ -139,7 +139,7 @@ class RequiredInstancesRuleTests(TestBase, StandardExchangeVerifier):
     def testAmqTopic(self):
         yield self.verifyTopicExchange("amq.topic")
         
-    @skipBroker(QPID)
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def testAmqMatch(self):
         yield self.verifyHeadersExchange("amq.match")
@@ -301,7 +301,7 @@ class HeadersExchangeTests(TestBase):
     def myBasicPublish(self, headers):
         self.channel.basic_publish(exchange="amq.match", content=Content("foobar", properties={'headers':headers}))
 
-    @skipBroker(QPID)
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def testMatchAll(self):
         yield self.channel.queue_bind(queue="q", exchange="amq.match", arguments={ 'x-match':'all', "name":"fred", "age":3})
@@ -315,7 +315,7 @@ class HeadersExchangeTests(TestBase):
         self.myBasicPublish({"name":"fred", "age":2})
         yield self.assertEmpty(self.q)
 
-    @skipBroker(QPID)
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def testMatchAny(self):
         yield self.channel.queue_bind(queue="q", exchange="amq.match", arguments={ 'x-match':'any', "name":"fred", "age":3})

@@ -19,7 +19,7 @@
 from txamqp.client import Closed
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase, skipBroker, QPID
+from txamqp.testlib import TestBase, supportedBrokers, QPID, RABBITMQ, OPENAMQ
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -109,7 +109,7 @@ class BrokerTests(TestBase):
         except Closed, e:
             self.assertConnectionException(504, e.args[0])
 
-    @skipBroker(QPID)
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_channel_flow(self):
         channel = self.channel

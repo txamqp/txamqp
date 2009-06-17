@@ -37,7 +37,7 @@ OPENAMQ = "OPENAMQ"
 QPID = "QPID"
 
 
-class skipBroker(object):
+class supportedBrokers(object):
 
     def __init__(self, *supporterBrokers):
         self.supporterBrokers = supporterBrokers
