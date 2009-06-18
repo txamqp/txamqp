@@ -318,3 +318,6 @@ class AMQClient(FrameReceiver):
 
         channel0 = yield self.channel(0)
         yield channel0.connection_open(self.vhost)
+
+    def connectionLost(self, reason):
+        self.close(reason)
