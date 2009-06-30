@@ -28,10 +28,10 @@ class AMQChannel(object):
         self.responses = TimeoutDeferredQueue()
 
         self.queue = None
-        
+
         self.closed = False
         self.reason = None
-    
+
     def close(self, reason):
         if self.closed:
             return
@@ -261,7 +261,7 @@ class AMQClient(FrameReceiver):
         finally:
             self.queueLock.release()
         defer.returnValue(q)
- 
+
     def close(self, reason):
         for ch in self.channels.values():
             ch.close(reason)
@@ -297,11 +297,6 @@ class AMQClient(FrameReceiver):
     def connectionMade(self):
         self.sendInitString()
         self.setFrameMode()
-
-    def connectionLost(self, reason):
-        if self.pendingHeartbeat is not None and self.pendingHeartbeat.active():
-            self.pendingHeartbeat.cancel()
-            self.pendingHeartbeat = None
 
     def frameReceived(self, frame):
         self.processFrame(frame)
@@ -347,4 +342,10 @@ class AMQClient(FrameReceiver):
         if self.transport.connected:
             tple = reactor.callLater(self.heartbeatInterval, self.heartbeatHandler)
         self.pendingHeartbeat = tple
-            
+
+    def connectionLost(self, reason):
+        if self.pendingHeartbeat is not None and self.pendingHeartbeat.active():
+            self.pendingHeartbeat.cancel()
+            self.pendingHeartbeat = None
+        self.close(reason)
+

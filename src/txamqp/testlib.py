@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,6 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+import os
+import warnings
 
 from txamqp.content import Content
 import txamqp.spec
@@ -28,6 +31,27 @@ from twisted.internet.defer import inlineCallbacks, Deferred, returnValue, Defer
 from twisted.python import failure
 from txamqp.queue import Empty
 
+
+RABBITMQ = "RABBITMQ"
+OPENAMQ = "OPENAMQ"
+QPID = "QPID"
+
+
+class supportedBrokers(object):
+
+    def __init__(self, *supporterBrokers):
+        self.supporterBrokers = supporterBrokers
+
+    def __call__(self, f):
+        if _get_broker() not in self.supporterBrokers:
+            f.skip = "Not supported for this broker."
+        return f
+
+
+def _get_broker():
+    return os.environ.get("TXAMQP_BROKER")
+
+
 class TestBase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
@@ -35,10 +59,25 @@ class TestBase(unittest.TestCase):
 
         self.host = 'localhost'
         self.port = 5672
-        self.spec = '../specs/qpid/amqp.0-8.xml'
+        broker = _get_broker()
+        if broker is None:
+            warnings.warn(
+                "Using default broker rabbitmq. Define TXAMQP_BROKER "
+                "environment variable to customized it.")
+            broker = RABBITMQ
+        if broker == RABBITMQ:
+            self.spec = '../specs/standard/amqp0-8.xml'
+        elif broker == OPENAMQ:
+            self.spec = '../specs/standard/amqp0-9.xml'
+        elif broker == QPID:
+            self.spec = '../specs/qpid/amqp.0-8.xml'
+        else:
+            raise RuntimeError(
+                "Unsupported broker '%s'. Use one of RABBITMQ, OPENAMQ or "
+                "QPID" % broker)
         self.user = 'guest'
         self.password = 'guest'
-        self.vhost = 'localhost'
+        self.vhost = '/'
         self.heartbeat = 0
         self.queues = []
         self.exchanges = []
@@ -65,7 +104,7 @@ class TestBase(unittest.TestCase):
 
         yield client.authenticate(user, password)
         returnValue(client)
- 
+
     @inlineCallbacks
     def setUp(self):
         self.client = yield self.connect()

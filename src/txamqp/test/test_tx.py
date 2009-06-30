@@ -19,7 +19,7 @@
 from txamqp.client import Closed
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase
+from txamqp.testlib import TestBase, supportedBrokers, QPID, RABBITMQ, OPENAMQ
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -58,6 +58,7 @@ class TxTests(TestBase):
         channel.basic_ack(delivery_tag=0, multiple=True)
         yield channel.tx_commit()
 
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_auto_rollback(self):
         """
@@ -95,6 +96,7 @@ class TxTests(TestBase):
         channel.basic_ack(delivery_tag=0, multiple=True)
         yield channel.tx_commit()
 
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_rollback(self):
         """
