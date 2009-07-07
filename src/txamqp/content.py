@@ -48,3 +48,7 @@ class Content:
 
   def __delitem__(self, name):
     del self.properties[name]
+
+  def __repr__(self):
+    return '<%s instance: body=%r, children=%r, properties=%r>' % (
+      self.__class__.__name__, self.body, self.children, self.properties)
