@@ -1,4 +1,11 @@
-from distutils.core import setup
+#!/usr/bin/env python
+try:
+ # Load setuptools, to build a specific source package
+ import setuptools
+ setup = setuptools.setup
+except ImportError:
+ from distutils.core import setup
+
 from glob import glob
 
 setup(
