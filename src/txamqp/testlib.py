@@ -25,7 +25,7 @@ import txamqp.spec
 
 from txamqp.protocol import AMQChannel, AMQClient, TwistedDelegate
 
-from twisted.internet import protocol, reactor
+from twisted.internet import error, protocol, reactor
 from twisted.trial import unittest
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue, DeferredQueue, DeferredLock
 from twisted.python import failure
@@ -52,6 +52,9 @@ def _get_broker():
     return os.environ.get("TXAMQP_BROKER")
 
 
+USERNAME='guest'
+PASSWORD='guest'
+VHOST='localhost'
 class TestBase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
@@ -75,9 +78,9 @@ class TestBase(unittest.TestCase):
             raise RuntimeError(
                 "Unsupported broker '%s'. Use one of RABBITMQ, OPENAMQ or "
                 "QPID" % broker)
-        self.user = 'guest'
-        self.password = 'guest'
-        self.vhost = 'localhost'
+        self.user = USERNAME
+        self.password = PASSWORD
+        self.vhost = VHOST
         self.queues = []
         self.exchanges = []
         self.connectors = []
@@ -95,6 +98,12 @@ class TestBase(unittest.TestCase):
         onConn = Deferred()
         f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, txamqp.spec.load(spec)), onConn)
         c = reactor.connectTCP(host, port, f)
+        def errb(thefailure):
+            thefailure.trap(error.ConnectionRefusedError)
+            print "failed to connect to host: %s, port: %s; These tests are designed to run against an existing AMQP broker on the given host and port.  failure: %s" % (host, port, thefailure,)
+            raise thefailure
+        onConn.addErrback(errb)
+
         self.connectors.append(c)
         client = yield onConn
 
@@ -103,7 +112,11 @@ class TestBase(unittest.TestCase):
  
     @inlineCallbacks
     def setUp(self):
-        self.client = yield self.connect()
+        try:
+            self.client = yield self.connect()
+        except txamqp.client.Closed, le:
+            le.args = tuple(("Unable to connect to AMQP broker in order to run tests (perhaps due to auth failure?).  The tests assume that an AMQP broker is already set up and that this test script can connect to it and use it as user '%s', password '%s', vhost '%s'." % (USERNAME, PASSWORD, VHOST),) + le.args)
+            raise
 
         self.channel = yield self.client.channel(1)
         yield self.channel.channel_open()
