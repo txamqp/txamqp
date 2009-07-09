@@ -77,7 +77,7 @@ class TestBase(unittest.TestCase):
                 "QPID" % broker)
         self.user = 'guest'
         self.password = 'guest'
-        self.vhost = '/'
+        self.vhost = 'localhost'
         self.heartbeat = 0
         self.queues = []
         self.exchanges = []
