@@ -29,6 +29,11 @@ def parse(file):
   xml.sax.parse(file, Builder(doc))
   return doc
 
+def parseString(string):
+  doc = Node("root")
+  xml.sax.parseString(string, Builder(doc))
+  return doc
+
 class Node:
 
   def __init__(self, name, attrs = None, text = None, parent = None):
