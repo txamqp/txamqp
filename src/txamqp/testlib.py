@@ -100,8 +100,9 @@ class TestBase(unittest.TestCase):
         c = reactor.connectTCP(host, port, f)
         def errb(thefailure):
             thefailure.trap(error.ConnectionRefusedError)
-            print "failed to connect to host: %s, port: %s; These tests are designed to run against an existing AMQP broker on the given host and port.  failure: %s" % (host, port, thefailure,)
-            raise thefailure
+            print "failed to connect to host: %s, port: %s; These tests are designed to run against a running instance" \
+                  " of the %s AMQP broker on the given host and port.  failure: %s" % (_get_broker(), host, port, thefailure,)
+            thefailure.raiseException()
         onConn.addErrback(errb)
 
         self.connectors.append(c)
@@ -115,7 +116,10 @@ class TestBase(unittest.TestCase):
         try:
             self.client = yield self.connect()
         except txamqp.client.Closed, le:
-            le.args = tuple(("Unable to connect to AMQP broker in order to run tests (perhaps due to auth failure?).  The tests assume that an AMQP broker is already set up and that this test script can connect to it and use it as user '%s', password '%s', vhost '%s'." % (USERNAME, PASSWORD, VHOST),) + le.args)
+            le.args = tuple(("Unable to connect to AMQP broker in order to run tests (perhaps due to auth failure?). " \
+                "The tests assume that an instance of the %s AMQP broker is already set up and that this test script " \
+                "can connect to it and use it as user '%s', password '%s', vhost '%s'." % (_get_broker(),
+                    USERNAME, PASSWORD, VHOST),) + le.args)
             raise
 
         self.channel = yield self.client.channel(1)
