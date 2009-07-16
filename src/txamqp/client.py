@@ -36,6 +36,9 @@ class TwistedDelegate(Delegate):
     def basic_deliver(self, ch, msg):
         (yield self.client.queue(msg.consumer_tag)).put(msg)
 
+    def basic_return_(self, ch, msg):
+        self.client.basic_return_queue.put(msg)
+
     def channel_close(self, ch, msg):
         ch.close(msg)
 

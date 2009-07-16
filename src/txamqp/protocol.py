@@ -220,6 +220,7 @@ class AMQClient(FrameReceiver):
         self.started = TwistedEvent()
 
         self.queueLock = defer.DeferredLock()
+        self.basic_return_queue = TimeoutDeferredQueue()
 
         self.queues = {}
 
@@ -254,7 +255,7 @@ class AMQClient(FrameReceiver):
         finally:
             self.queueLock.release()
         defer.returnValue(q)
- 
+
     def close(self, reason):
         for ch in self.channels.values():
             ch.close(reason)
