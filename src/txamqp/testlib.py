@@ -20,6 +20,8 @@
 import os
 import warnings
 
+from twisted.python import log
+
 from txamqp.content import Content
 import txamqp.spec
 
@@ -51,10 +53,10 @@ class supportedBrokers(object):
 def _get_broker():
     return os.environ.get("TXAMQP_BROKER")
 
-
 USERNAME='guest'
 PASSWORD='guest'
 VHOST='localhost'
+
 class TestBase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
@@ -62,17 +64,17 @@ class TestBase(unittest.TestCase):
 
         self.host = 'localhost'
         self.port = 5672
-        broker = _get_broker()
-        if broker is None:
+        self.broker = _get_broker()
+        if self.broker is None:
             warnings.warn(
                 "Using default broker rabbitmq. Define TXAMQP_BROKER "
                 "environment variable to customized it.")
-            broker = RABBITMQ
-        if broker == RABBITMQ:
+            self.broker = RABBITMQ
+        if self.broker == RABBITMQ:
             self.spec = '../specs/standard/amqp0-8.xml'
-        elif broker == OPENAMQ:
+        elif self.broker == OPENAMQ:
             self.spec = '../specs/standard/amqp0-9.xml'
-        elif broker == QPID:
+        elif self.broker == QPID:
             self.spec = '../specs/qpid/amqp.0-8.xml'
         else:
             raise RuntimeError(
@@ -101,7 +103,7 @@ class TestBase(unittest.TestCase):
         def errb(thefailure):
             thefailure.trap(error.ConnectionRefusedError)
             print "failed to connect to host: %s, port: %s; These tests are designed to run against a running instance" \
-                  " of the %s AMQP broker on the given host and port.  failure: %s" % (_get_broker(), host, port, thefailure,)
+                  " of the %s AMQP broker on the given host and port.  failure: %r" % (host, port, self.broker, thefailure,)
             thefailure.raiseException()
         onConn.addErrback(errb)
 
