@@ -244,7 +244,7 @@ def load_fields(nd, l, domains):
     l.add(Field(f_nd["@name"], f_nd.index(), type, get_docs(f_nd)))
 
 def load(specfile):
-  return loadString(open(specfile).read(), specfilename=specfile.name)
+  return loadString(open(specfile).read(), specfilename=specfile)
 
 def loadString(specfilestr, specfilename=None):
   doc = xmlutil.parseString(specfilestr)
