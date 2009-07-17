@@ -20,8 +20,6 @@
 import os
 import warnings
 
-from twisted.python import log
-
 from txamqp.content import Content
 import txamqp.spec
 
@@ -79,7 +77,7 @@ class TestBase(unittest.TestCase):
         else:
             raise RuntimeError(
                 "Unsupported broker '%s'. Use one of RABBITMQ, OPENAMQ or "
-                "QPID" % broker)
+                "QPID" % self.broker)
         self.user = USERNAME
         self.password = PASSWORD
         self.vhost = VHOST
