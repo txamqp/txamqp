@@ -244,10 +244,14 @@ def load_fields(nd, l, domains):
     l.add(Field(f_nd["@name"], f_nd.index(), type, get_docs(f_nd)))
 
 def load(specfile):
-  return loadString(open(specfile).read(), specfilename=specfile.name)
+  doc = xmlutil.parse(specfile)
+  return loadFromDoc(doc, specfilename=specfile)
 
 def loadString(specfilestr, specfilename=None):
   doc = xmlutil.parseString(specfilestr)
+  return loadFromDoc(doc, specfilename=specfilename)
+
+def loadFromDoc(doc, specfilename=None):
   root = doc["amqp"][0]
   spec = Spec(int(root["@major"]), int(root["@minor"]), specfilename)
 
