@@ -1,6 +1,7 @@
 # coding: utf-8
 from twisted.python import log
 from twisted.internet import defer, protocol, reactor
+from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
 from txamqp import spec
 from txamqp.codec import Codec, EOF
@@ -201,6 +202,9 @@ class AMQClient(FrameReceiver):
 
     channelClass = AMQChannel
 
+    # Max unreceived heartbeat frames. The AMQP standard says it's 3.
+    MAX_UNSEEN_HEARTBEAT = 3
+
     def __init__(self, delegate, vhost, heartbeat=0, *args, **kwargs):
         FrameReceiver.__init__(self, *args, **kwargs)
         self.delegate = delegate
@@ -219,8 +223,6 @@ class AMQClient(FrameReceiver):
         self.work = defer.DeferredQueue()
 
         self.started = TwistedEvent()
-        self.lastSent = time()
-        self.lastReceived = time()
 
         self.queueLock = defer.DeferredLock()
 
@@ -229,9 +231,26 @@ class AMQClient(FrameReceiver):
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
         self.heartbeatInterval = heartbeat
-        self.pendingHeartbeat = None
+        self.checkHB = None
+        self.sendHB = None
         if self.heartbeatInterval > 0:
-            self.started.wait().addCallback(self.heartbeatHandler)
+            d = self.started.wait()
+            d.addCallback(self.reschedule_sendHB)
+            d.addCallback(self.reschedule_checkHB)
+
+    def reschedule_sendHB(self, dummy=None):
+        if self.heartbeatInterval > 0:
+            if self.sendHB is None:
+                self.sendHB = LoopingCall(self.sendHeartbeat)
+            elif self.sendHB.running:
+                self.sendHB.stop()
+            self.sendHB.start(self.heartbeatInterval, now=False)
+
+    def reschedule_checkHB(self, dummy=None):
+        if self.checkHB is not None and self.checkHB.active():
+            self.checkHB.cancel()
+        self.checkHB = reactor.callLater(self.heartbeatInterval *
+              self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
 
     def check_0_8(self):
         return (self.spec.minor, self.spec.major) == (0, 8)
@@ -302,15 +321,17 @@ class AMQClient(FrameReceiver):
         self.processFrame(frame)
 
     def sendFrame(self, frame):
-        self.lastSent = time()
+        if frame.payload.type != Frame.HEARTBEAT:
+            self.reschedule_sendHB()
         FrameReceiver.sendFrame(self, frame)
 
     @defer.inlineCallbacks
     def processFrame(self, frame):
-        self.lastReceived = time()
         ch = yield self.channel(frame.channel)
         if frame.payload.type != Frame.HEARTBEAT:
             ch.dispatch(frame, self.work)
+        if self.heartbeatInterval > 0:
+            self.reschedule_checkHB()
 
     @defer.inlineCallbacks
     def authenticate(self, username, password, mechanism='AMQPLAIN', locale='en_US'):
@@ -332,20 +353,19 @@ class AMQClient(FrameReceiver):
         channel0 = yield self.channel(0)
         yield channel0.connection_open(self.vhost)
 
-    def heartbeatHandler (self, dummy=None):
-        now = time()
-        if self.lastSent + self.heartbeatInterval < now:
-            self.sendFrame(Frame(0, Heartbeat()))
-        if self.lastReceived + self.heartbeatInterval * 3 < now:
-            self.transport.loseConnection()
-        tple = None
-        if self.transport.connected:
-            tple = reactor.callLater(self.heartbeatInterval, self.heartbeatHandler)
-        self.pendingHeartbeat = tple
+    def sendHeartbeat(self):
+        self.sendFrame(Frame(0, Heartbeat()))
+
+    def checkHeartbeat(self):
+        if self.checkHB is not None and self.checkHB.active():
+            self.checkHB.cancel()
+            self.checkHB = None
+        self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        if self.pendingHeartbeat is not None and self.pendingHeartbeat.active():
-            self.pendingHeartbeat.cancel()
-            self.pendingHeartbeat = None
+        if self.heartbeatInterval > 0 and self.sendHB.running:
+            self.sendHB.stop()
+        if self.checkHB is not None and self.checkHB.active():
+            self.checkHB.cancel()
         self.close(reason)
 
