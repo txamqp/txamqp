@@ -53,7 +53,7 @@ def _get_broker():
 
 USERNAME='guest'
 PASSWORD='guest'
-VHOST='localhost'
+VHOST='/'
 
 class TestBase(unittest.TestCase):
 
