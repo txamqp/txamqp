@@ -54,8 +54,12 @@ def _get_broker():
 USERNAME='guest'
 PASSWORD='guest'
 VHOST='/'
+HEARTBEAT = 0
 
 class TestBase(unittest.TestCase):
+
+    clientClass = AMQClient
+    heartbeat = HEARTBEAT
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
@@ -81,14 +85,13 @@ class TestBase(unittest.TestCase):
         self.user = USERNAME
         self.password = PASSWORD
         self.vhost = VHOST
-        self.heartbeat = 0
         self.queues = []
         self.exchanges = []
         self.connectors = []
 
     @inlineCallbacks
-    def connect(self, host=None, port=None, spec=None, user=None,
-                           password=None, vhost=None, heartbeat=None):
+    def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None,
+            heartbeat=None, clientClass=None):
         host = host or self.host
         port = port or self.port
         spec = spec or self.spec
@@ -96,10 +99,11 @@ class TestBase(unittest.TestCase):
         password = password or self.password
         vhost = vhost or self.vhost
         heartbeat = heartbeat or self.heartbeat
+        clientClass = clientClass or self.clientClass
 
         delegate = TwistedDelegate()
         onConn = Deferred()
-        p = AMQClient(delegate, vhost, heartbeat=heartbeat, spec=txamqp.spec.load(spec))
+        p = clientClass(delegate, vhost, txamqp.spec.load(spec), heartbeat=heartbeat)
         f = protocol._InstanceFactory(reactor, p, onConn)
         c = reactor.connectTCP(host, port, f)
         def errb(thefailure):

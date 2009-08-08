@@ -205,8 +205,8 @@ class AMQClient(FrameReceiver):
     # Max unreceived heartbeat frames. The AMQP standard says it's 3.
     MAX_UNSEEN_HEARTBEAT = 3
 
-    def __init__(self, delegate, vhost, heartbeat=0, *args, **kwargs):
-        FrameReceiver.__init__(self, *args, **kwargs)
+    def __init__(self, delegate, vhost, spec, heartbeat=0):
+        FrameReceiver.__init__(self, spec)
         self.delegate = delegate
 
         # XXX Cyclic dependency
