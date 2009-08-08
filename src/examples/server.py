@@ -62,23 +62,13 @@ class CalculatorHandler(object):
 def prepareClient(client, username, password):
     yield client.authenticate(username, password)
 
-    channel = yield client.channel(1)
-
-    yield channel.channel_open()
-    yield channel.exchange_declare(exchange=servicesExchange, type="direct")
-
-    yield channel.queue_declare(queue=calculatorQueue, auto_delete=True)
-    yield channel.queue_bind(queue=calculatorQueue, exchange=servicesExchange,
-        routing_key=calculatorKey)
-
     handler = CalculatorHandler()
     processor = tutorial.Calculator.Processor(handler)
     pfactory = TBinaryProtocol.TBinaryProtocolFactory()
 
-    reply = yield channel.basic_consume(queue=calculatorQueue)
-    queue = yield client.queue(reply.consumer_tag)
-    queue.get().addCallback(client.parseServerMessage, channel, responsesExchange,
-        queue, processor, pfactory, pfactory)
+    yield client.createThriftServer(responsesExchange, servicesExchange,
+        calculatorKey, processor, calculatorQueue, iprot_factory=pfactory,
+        oprot_factory=pfactory)
 
 if __name__ == '__main__':
     import sys
