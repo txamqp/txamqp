@@ -25,7 +25,7 @@ import txamqp.spec
 
 from txamqp.protocol import AMQChannel, AMQClient, TwistedDelegate
 
-from twisted.internet import protocol, reactor
+from twisted.internet import error, protocol, reactor
 from twisted.trial import unittest
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue, DeferredQueue, DeferredLock
 from twisted.python import failure
@@ -51,6 +51,9 @@ class supportedBrokers(object):
 def _get_broker():
     return os.environ.get("TXAMQP_BROKER")
 
+USERNAME='guest'
+PASSWORD='guest'
+VHOST='/'
 
 class TestBase(unittest.TestCase):
 
@@ -59,25 +62,25 @@ class TestBase(unittest.TestCase):
 
         self.host = 'localhost'
         self.port = 5672
-        broker = _get_broker()
-        if broker is None:
+        self.broker = _get_broker()
+        if self.broker is None:
             warnings.warn(
                 "Using default broker rabbitmq. Define TXAMQP_BROKER "
                 "environment variable to customized it.")
-            broker = RABBITMQ
-        if broker == RABBITMQ:
+            self.broker = RABBITMQ
+        if self.broker == RABBITMQ:
             self.spec = '../specs/standard/amqp0-8.xml'
-        elif broker == OPENAMQ:
+        elif self.broker == OPENAMQ:
             self.spec = '../specs/standard/amqp0-9.xml'
-        elif broker == QPID:
+        elif self.broker == QPID:
             self.spec = '../specs/qpid/amqp.0-8.xml'
         else:
             raise RuntimeError(
                 "Unsupported broker '%s'. Use one of RABBITMQ, OPENAMQ or "
-                "QPID" % broker)
-        self.user = 'guest'
-        self.password = 'guest'
-        self.vhost = 'localhost'
+                "QPID" % self.broker)
+        self.user = USERNAME
+        self.password = PASSWORD
+        self.vhost = VHOST
         self.heartbeat = 0
         self.queues = []
         self.exchanges = []
@@ -99,6 +102,13 @@ class TestBase(unittest.TestCase):
         p = AMQClient(delegate, vhost, heartbeat=heartbeat, spec=txamqp.spec.load(spec))
         f = protocol._InstanceFactory(reactor, p, onConn)
         c = reactor.connectTCP(host, port, f)
+        def errb(thefailure):
+            thefailure.trap(error.ConnectionRefusedError)
+            print "failed to connect to host: %s, port: %s; These tests are designed to run against a running instance" \
+                  " of the %s AMQP broker on the given host and port.  failure: %r" % (host, port, self.broker, thefailure,)
+            thefailure.raiseException()
+        onConn.addErrback(errb)
+
         self.connectors.append(c)
         client = yield onConn
 
@@ -107,7 +117,14 @@ class TestBase(unittest.TestCase):
 
     @inlineCallbacks
     def setUp(self):
-        self.client = yield self.connect()
+        try:
+            self.client = yield self.connect()
+        except txamqp.client.Closed, le:
+            le.args = tuple(("Unable to connect to AMQP broker in order to run tests (perhaps due to auth failure?). " \
+                "The tests assume that an instance of the %s AMQP broker is already set up and that this test script " \
+                "can connect to it and use it as user '%s', password '%s', vhost '%s'." % (_get_broker(),
+                    USERNAME, PASSWORD, VHOST),) + le.args)
+            raise
 
         self.channel = yield self.client.channel(1)
         yield self.channel.channel_open()
