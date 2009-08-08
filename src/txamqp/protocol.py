@@ -232,23 +232,22 @@ class AMQClient(FrameReceiver):
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
         self.heartbeatInterval = heartbeat
-        self.checkHB = None
-        self.sendHB = None
         if self.heartbeatInterval > 0:
+            self.checkHB = reactor.callLater(self.heartbeatInterval *
+                          self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
+            self.sendHB = LoopingCall(self.sendHeartbeat)
             d = self.started.wait()
-            d.addCallback(self.reschedule_sendHB)
-            d.addCallback(self.reschedule_checkHB)
+            d.addCallback(lambda _: self.reschedule_sendHB())
+            d.addCallback(lambda _: self.reschedule_checkHB())
 
-    def reschedule_sendHB(self, dummy=None):
+    def reschedule_sendHB(self):
         if self.heartbeatInterval > 0:
-            if self.sendHB is None:
-                self.sendHB = LoopingCall(self.sendHeartbeat)
-            elif self.sendHB.running:
+            if self.sendHB.running:
                 self.sendHB.stop()
             self.sendHB.start(self.heartbeatInterval, now=False)
 
-    def reschedule_checkHB(self, dummy=None):
-        if self.checkHB is not None and self.checkHB.active():
+    def reschedule_checkHB(self):
+        if self.checkHB.active():
             self.checkHB.cancel()
         self.checkHB = reactor.callLater(self.heartbeatInterval *
               self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
@@ -329,7 +328,9 @@ class AMQClient(FrameReceiver):
     @defer.inlineCallbacks
     def processFrame(self, frame):
         ch = yield self.channel(frame.channel)
-        if frame.payload.type != Frame.HEARTBEAT:
+        if frame.payload.type == Frame.HEARTBEAT:
+            self.lastHBReceived = time()
+        else:
             ch.dispatch(frame, self.work)
         if self.heartbeatInterval > 0:
             self.reschedule_checkHB()
@@ -356,17 +357,18 @@ class AMQClient(FrameReceiver):
 
     def sendHeartbeat(self):
         self.sendFrame(Frame(0, Heartbeat()))
+        self.lastHBSent = time()
 
     def checkHeartbeat(self):
-        if self.checkHB is not None and self.checkHB.active():
+        if self.checkHB.active():
             self.checkHB.cancel()
-            self.checkHB = None
         self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        if self.heartbeatInterval > 0 and self.sendHB.running:
-            self.sendHB.stop()
-        if self.checkHB is not None and self.checkHB.active():
-            self.checkHB.cancel()
+        if self.heartbeatInterval > 0:
+            if self.sendHB.running:
+                self.sendHB.stop()
+            if self.checkHB.active():
+                self.checkHB.cancel()
         self.close(reason)
 
