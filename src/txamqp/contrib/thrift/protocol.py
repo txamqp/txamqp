@@ -2,7 +2,7 @@ from zope.interface import Interface, Attribute
 from txamqp.protocol import AMQClient
 from txamqp.contrib.thrift.transport import TwistedAMQPTransport
 from txamqp.content import Content
-from txamqp.queue import TimeoutDeferredQueue
+from txamqp.queue import TimeoutDeferredQueue, Closed
 
 from twisted.internet import defer
 from twisted.python import log
@@ -71,14 +71,20 @@ class ThriftAMQClient(AMQClient):
         thriftClient = clientClass(amqpTransport, oprot_factory)
 
         queue = yield self.queue(reply.consumer_tag)
-        queue.get().addCallback(self.parseClientMessage, channel, queue,
-            thriftClient, iprot_factory=iprot_factory)
+        d = queue.get()
+        d.addCallback(self.parseClientMessage, channel, queue, thriftClient,
+            iprot_factory=iprot_factory)
+        d.addErrback(self.catchClosedClientQueue)
+        d.addErrback(self.handleClientQueueError)
+
 
         basicReturnQueue = yield self.thriftBasicReturnQueue(thriftClientName)
-
-        basicReturnQueue.get().addCallback(
-            self.parseClientUnrouteableMessage, channel, basicReturnQueue,
-            thriftClient, iprot_factory=iprot_factory)
+        
+        d = basicReturnQueue.get()
+        d.addCallback(self.parseClientUnrouteableMessage, channel,
+            basicReturnQueue, thriftClient, iprot_factory=iprot_factory)
+        d.addErrback(self.catchClosedClientQueue)
+        d.addErrback(self.handleClientQueueError)
 
         defer.returnValue(thriftClient)
 
@@ -102,8 +108,12 @@ class ThriftAMQClient(AMQClient):
         method(iprot, mtype, rseqid)
 
         channel.basic_ack(deliveryTag, True)
-        queue.get().addCallback(self.parseClientMessage, channel, queue,
-            thriftClient, iprot_factory=iprot_factory)
+        
+        d = queue.get()
+        d.addCallback(self.parseClientMessage, channel, queue, thriftClient,
+            iprot_factory=iprot_factory)
+        d.addErrback(self.catchClosedClientQueue)
+        d.addErrback(self.handleClientQueueError)
 
     def parseClientUnrouteableMessage(self, msg, channel, queue, thriftClient,
                                       iprot_factory=None):
@@ -129,9 +139,44 @@ class ThriftAMQClient(AMQClient):
                 message='Unrouteable message, routing key = %r calling function %r'
                 % (msg.routing_key, fname)))
 
-        queue.get().addCallback(
-            self.parseClientUnrouteableMessage, channel, queue,
+        d = queue.get()
+        d.addCallback(self.parseClientUnrouteableMessage, channel, queue,
             thriftClient, iprot_factory=iprot_factory)
+        d.addErrback(self.catchClosedClientQueue)
+        d.addErrback(self.handleClientQueueError)
+
+    def catchClosedClientQueue(self, failure):
+        # The queue is closed. Catch the exception and cleanup as needed.
+        failure.trap(Closed)
+        self.handleClosedClientQueue(failure)
+    
+    def handleClientQueueError(self, failure):
+        pass
+
+    def handleClosedServerQueue(self, failure):
+        pass
+
+    @defer.inlineCallbacks
+    def createThriftServer(self, responsesExchange, serviceExchange,
+        routingKey, processor, serviceQueue, channel=1, iprot_factory=None,
+        oprot_factory=None):
+
+        channel = yield self.channel(channel)
+
+        yield channel.channel_open()
+        yield channel.exchange_declare(exchange=serviceExchange, type="direct")
+
+        yield channel.queue_declare(queue=serviceQueue, auto_delete=True)
+        yield channel.queue_bind(queue=serviceQueue, exchange=serviceExchange,
+            routing_key=routingKey)
+
+        reply = yield channel.basic_consume(queue=serviceQueue)
+        queue = yield self.queue(reply.consumer_tag)
+        d = queue.get()
+        d.addCallback(self.parseServerMessage, channel, responsesExchange,
+            queue, processor, iprot_factory=iprot_factory, oprot_factory=oprot_factory)
+        d.addErrback(self.catchClosedServerQueue)
+        d.addErrback(self.handleServerQueueError)
 
     def parseServerMessage(self, msg, channel, exchange, queue, processor,
         iprot_factory=None, oprot_factory=None):
@@ -157,9 +202,22 @@ class ThriftAMQClient(AMQClient):
         d = processor.process(iprot, oprot)
         channel.basic_ack(deliveryTag, True)
 
-        queue.get().addCallback(self.parseServerMessage, channel,
-            exchange, queue, processor, iprot_factory, oprot_factory)
+        d = queue.get()
+        d.addCallback(self.parseServerMessage, channel, exchange, queue,
+            processor, iprot_factory, oprot_factory)
+        d.addErrback(self.catchClosedServerQueue)
+        d.addErrback(self.handleServerQueueError)
 
+    def catchClosedServerQueue(self, failure):
+        # The queue is closed. Catch the exception and cleanup as needed.
+        failure.trap(Closed)
+        self.handleClosedServerQueue(failure)
+    
+    def handleServerQueueError(self, failure):
+        pass
+
+    def handleClosedServerQueue(self, failure):
+        pass
 
 class IThriftAMQClientFactory(Interface):
 
