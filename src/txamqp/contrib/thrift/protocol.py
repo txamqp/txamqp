@@ -153,7 +153,7 @@ class ThriftAMQClient(AMQClient):
     def handleClientQueueError(self, failure):
         pass
 
-    def handleClosedServerQueue(self, failure):
+    def handleClosedClientQueue(self, failure):
         pass
 
     @defer.inlineCallbacks
