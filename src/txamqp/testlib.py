@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -54,8 +54,12 @@ def _get_broker():
 USERNAME='guest'
 PASSWORD='guest'
 VHOST='/'
+HEARTBEAT = 0
 
 class TestBase(unittest.TestCase):
+
+    clientClass = AMQClient
+    heartbeat = HEARTBEAT
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
@@ -86,17 +90,21 @@ class TestBase(unittest.TestCase):
         self.connectors = []
 
     @inlineCallbacks
-    def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None):
+    def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None,
+            heartbeat=None, clientClass=None):
         host = host or self.host
         port = port or self.port
         spec = spec or self.spec
         user = user or self.user
         password = password or self.password
         vhost = vhost or self.vhost
+        heartbeat = heartbeat or self.heartbeat
+        clientClass = clientClass or self.clientClass
 
         delegate = TwistedDelegate()
         onConn = Deferred()
-        f = protocol._InstanceFactory(reactor, AMQClient(delegate, vhost, txamqp.spec.load(spec)), onConn)
+        p = clientClass(delegate, vhost, txamqp.spec.load(spec), heartbeat=heartbeat)
+        f = protocol._InstanceFactory(reactor, p, onConn)
         c = reactor.connectTCP(host, port, f)
         def errb(thefailure):
             thefailure.trap(error.ConnectionRefusedError)
@@ -110,7 +118,7 @@ class TestBase(unittest.TestCase):
 
         yield client.authenticate(user, password)
         returnValue(client)
- 
+
     @inlineCallbacks
     def setUp(self):
         try:
