@@ -15,7 +15,7 @@ except ImportError:
         'txamqp': 'src/txamqp',
         'txamqp.contrib': 'src/txamqp/contrib',
         'txamqp.contrib.thrift': 'src/txamqp/contrib/thrift',
-    },
+    }
 else:
     setupdict['packages'] = find_packages('src')
     setupdict['package_dir'] = { '': 'src' }
