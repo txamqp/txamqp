@@ -245,8 +245,15 @@ def load_fields(nd, l, domains):
 
 def load(specfile):
   doc = xmlutil.parse(specfile)
+  return loadFromDoc(doc, specfilename=specfile)
+
+def loadString(specfilestr, specfilename=None):
+  doc = xmlutil.parseString(specfilestr)
+  return loadFromDoc(doc, specfilename=specfilename)
+
+def loadFromDoc(doc, specfilename=None):
   root = doc["amqp"][0]
-  spec = Spec(int(root["@major"]), int(root["@minor"]), specfile)
+  spec = Spec(int(root["@major"]), int(root["@minor"]), specfilename)
 
   # constants
   for nd in root["constant"]:

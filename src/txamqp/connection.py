@@ -196,3 +196,15 @@ class Body(Payload):
 
   def __str__(self):
     return "Body(%r)" % self.content
+
+class Heartbeat(Payload):
+  type = Frame.HEARTBEAT
+  def __str__(self):
+    return "Heartbeat()"
+
+  def encode(self, enc):
+    enc.encode_long(0)
+
+  def decode(spec, dec):
+    dec.decode_long()
+    return Heartbeat()
