@@ -1,0 +1,37 @@
+Instructions
+============
+
+Requirements
+------------
+
+Follow the instructions at the top level doc/ directory for installing and
+setting up a broker and txAMQP.
+
+Running
+-------
+
+1. Open two consoles:
+   a) In one of them run the txconsumer.py script:
+      $ python txconsumer.py host port vhost username password path_to_spec
+      e.g. txconsumer.py localhost 5672 / guest guest ../../specs/standard/amqp0-8.xml
+   b) In the other one run the txpublisher.py script:
+      $ python txpublisher.py host port vhost username password path_to_spec content [count]
+      e.g. txpublisher.py localhost 5672 / guest guest ../../specs/standard/amqp0-8.xml hello 1000
+
+Where:
+- host: The host where the AMQP broker is located.
+- port: The port where the AMQP broker listens on.
+- vhost: The virtual host (depending on your broker configuration, default
+    in most cases is '/').
+- username: The username to log in to the broker (default in most cases
+    is 'guest').
+- password: The username to log in to the broker (default in most cases
+    is 'guest').
+- path_to_spec: The path to the AMQP spec that you want to use. Keep in mind
+    that depending on the broker you use, you will need a different spec:
+    - RabbitMQ 1.5.3: $TXAMQP_PATH/src/specs/standard/amqp0-8.xml
+    - OpenAMQ 1.3c5: $TXAMQP_PATH/src/specs/standard/amqp0-9.xml
+    - Qpid M3 (Java): $TXAMQP_PATH/src/specs/qpid/amqp.0-8.xml
+
+2. You should see messages being sent from the second console and received
+   in the first one.

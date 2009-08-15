@@ -1,0 +1,14 @@
+txAMQP 0.3:
+
+- Added support for hearbeat (Anthony Lenton)
+- Added support for setuptools (Zooko Wilcox-O'Hearn)
+- Added support for loading the XML spec from a string (Zooko Wilcox-O'Hearn)
+- Added support for multiple brokers in the testsuite (Thomas Hervé)
+- Added support for basic_return
+- Added support for detecting closed connections
+- Fixed reference cycle error (Dan Di Spaltro)
+- Fixed closed queue errors in the Thrift glue (Jonathan Stoppani)
+- Fixed frame decoding errors
+- Updated support for Thrift
+
+Dan Di Spaltro and Thomas Hervé became committers.
