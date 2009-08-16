@@ -2,7 +2,7 @@
 # -*- mode: makefile; coding: utf-8 -*-
 
 DEB_PYTHON_SYSTEM=pycentral
-DEB_COMPRESS_EXCLUDE := .py .xml
+DEB_COMPRESS_EXCLUDE := .py .xml .thrift
 
 # Keep the .egg-info in the /usr/lib/python2.X/... directory
 #export DH_PYCENTRAL="nomove"
