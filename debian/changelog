@@ -1,3 +1,9 @@
+python-txamqp (0.3-1ubuntu1~8.04) hardy; urgency=low
+
+  * Bump version.
+
+ -- Esteve Fernandez <esteve@fluidinfo.com>  Fri, 14 Aug 2009 19:57:14 +0200
+
 python-txamqp (0.2.1~hardy) hardy; urgency=low
 
   * Added recommendation to python-thrift.

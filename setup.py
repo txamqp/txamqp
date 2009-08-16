@@ -1,6 +1,6 @@
 setupdict= {
     'name': 'txAMQP',
-    'version': '0.2',
+    'version': '0.3',
     'author': 'Esteve Fernandez',
     'author_email': 'esteve@fluidinfo.com',
     'url': 'https://launchpad.net/txamqp',
