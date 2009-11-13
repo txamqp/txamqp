@@ -1,6 +1,6 @@
 # coding: utf-8
 from twisted.python import log
-from twisted.internet import defer, protocol, reactor
+from twisted.internet import defer, protocol
 from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
 from txamqp import spec
@@ -205,7 +205,7 @@ class AMQClient(FrameReceiver):
     # Max unreceived heartbeat frames. The AMQP standard says it's 3.
     MAX_UNSEEN_HEARTBEAT = 3
 
-    def __init__(self, delegate, vhost, spec, heartbeat=0):
+    def __init__(self, delegate, vhost, spec, heartbeat=0, clock=None):
         FrameReceiver.__init__(self, spec)
         self.delegate = delegate
 
@@ -233,7 +233,10 @@ class AMQClient(FrameReceiver):
         self.work.get().addCallback(self.worker)
         self.heartbeatInterval = heartbeat
         if self.heartbeatInterval > 0:
-            self.checkHB = reactor.callLater(self.heartbeatInterval *
+            if clock is None:
+                from twisted.internet import reactor as clock
+            self.clock = clock
+            self.checkHB = self.clock.callLater(self.heartbeatInterval *
                           self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
             self.sendHB = LoopingCall(self.sendHeartbeat)
             d = self.started.wait()
@@ -249,7 +252,7 @@ class AMQClient(FrameReceiver):
     def reschedule_checkHB(self):
         if self.checkHB.active():
             self.checkHB.cancel()
-        self.checkHB = reactor.callLater(self.heartbeatInterval *
+        self.checkHB = self.clock.callLater(self.heartbeatInterval *
               self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
 
     def check_0_8(self):
