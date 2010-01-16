@@ -21,12 +21,10 @@
 # Tests for the testlib itself.
 # 
 
-from txamqp.content import Content
 from txamqp.testlib import TestBase
 from txamqp.queue import Empty
 
-import sys
-from traceback import *
+from traceback import print_stack
 
 from twisted.internet.defer import inlineCallbacks
 

@@ -25,7 +25,7 @@ fields.
 """
 
 from cStringIO import StringIO
-from struct import *
+from struct import pack, calcsize, unpack
 
 class EOF(Exception):
   pass

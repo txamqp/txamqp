@@ -1,14 +1,13 @@
 # coding: utf-8
-from twisted.python import log
 from twisted.internet import defer, protocol
 from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
 from txamqp import spec
-from txamqp.codec import Codec, EOF
+from txamqp.codec import Codec
 from txamqp.connection import Header, Frame, Method, Body, Heartbeat
 from txamqp.message import Message
 from txamqp.content import Content
-from txamqp.queue import TimeoutDeferredQueue, Empty, Closed as QueueClosed
+from txamqp.queue import TimeoutDeferredQueue, Closed as QueueClosed
 from txamqp.client import TwistedEvent, TwistedDelegate, Closed
 from cStringIO import StringIO
 import struct

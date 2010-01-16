@@ -1,9 +1,7 @@
-from time import time
-import txamqp
 from txamqp.testlib import TestBase
-from txamqp.protocol import AMQClient, TwistedDelegate
-from twisted.internet import reactor, protocol
-from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+from txamqp.protocol import AMQClient
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred
 
 class SpyAMQClient(AMQClient):
     called_reschedule_check = 0
@@ -31,7 +29,6 @@ class HeartbeatTests(TestBase):
         """
         d = Deferred()
         def checkPulse(dummy):
-            t = time()
             self.assertTrue(self.client.called_send_hb,
                         "A heartbeat frame was recently sent")
             self.assertTrue(self.client.called_reschedule_check,
