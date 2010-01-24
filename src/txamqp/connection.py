@@ -21,7 +21,7 @@ import codec
 from cStringIO import StringIO
 from spec import pythonize
 
-class Frame:
+class Frame(object):
 
   METHOD = "frame_method"
   HEADER = "frame_header"
@@ -41,7 +41,7 @@ class Frame:
   def __str__(self):
     return "[%d] %s" % (self.channel, self.payload)
 
-class Payload:
+class Payload(object):
 
   class __metaclass__(type):
 

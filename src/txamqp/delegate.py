@@ -20,7 +20,7 @@
 import inspect
 from spec import pythonize
 
-class Delegate:
+class Delegate(object):
 
   def __init__(self):
     self.handlers = {}

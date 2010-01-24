@@ -34,7 +34,7 @@ def parseString(string):
   xml.sax.parseString(string, Builder(doc))
   return doc
 
-class Node:
+class Node(object):
 
   def __init__(self, name, attrs = None, text = None, parent = None):
     self.name = name

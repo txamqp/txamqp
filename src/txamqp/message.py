@@ -21,7 +21,7 @@ try:
 except NameError:
     from sets import Set as set
 
-class Message:
+class Message(object):
 
   COMMON_FIELDS = set(("content", "method", "fields"))
 
