@@ -8,7 +8,7 @@ from txamqp.connection import Header, Frame, Method, Body, Heartbeat
 from txamqp.message import Message
 from txamqp.content import Content
 from txamqp.queue import TimeoutDeferredQueue, Closed as QueueClosed
-from txamqp.client import TwistedEvent, TwistedDelegate, Closed
+from txamqp.client import TwistedEvent, Closed
 from cStringIO import StringIO
 import struct
 from time import time
@@ -373,4 +373,3 @@ class AMQClient(FrameReceiver):
             if self.checkHB.active():
                 self.checkHB.cancel()
         self.close(reason)
-
