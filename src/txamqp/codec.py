@@ -153,6 +153,13 @@ class Codec(object):
   def decode_longstr(self):
     return self.dec_str("!L")
 
+  # timestamp
+  def encode_timestamp(self, o):
+    self.pack("!Q", o)
+
+  def decode_timestamp(self):
+    return self.unpack("!Q")
+
   # table
   def encode_table(self, tbl):
     enc = StringIO()
