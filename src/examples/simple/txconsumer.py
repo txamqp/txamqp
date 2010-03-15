@@ -1,8 +1,11 @@
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet import reactor
 from twisted.internet.protocol import ClientCreator
+from twisted.python import log
+
 from txamqp.protocol import AMQClient
 from txamqp.client import TwistedDelegate
+
 import txamqp.spec
 
 @inlineCallbacks
@@ -61,5 +64,12 @@ if __name__ == "__main__":
         spec=spec).connectTCP(host, port)
 
     d.addCallback(gotConnection, username, password)
+
+    def whoops(err):
+        if reactor.running:
+            log.err(err)
+            reactor.stop()
+
+    d.addErrback(whoops)
 
     reactor.run()
