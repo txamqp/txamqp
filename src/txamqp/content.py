@@ -27,7 +27,7 @@ def default(val, defval):
   else:
     return val
 
-class Content:
+class Content(object):
 
   def __init__(self, body = "", children = None, properties = None):
     self.body = body

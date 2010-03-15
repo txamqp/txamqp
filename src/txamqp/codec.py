@@ -30,7 +30,7 @@ from struct import pack, calcsize, unpack
 class EOF(Exception):
   pass
 
-class Codec:
+class Codec(object):
 
   def __init__(self, stream):
     self.stream = stream

@@ -33,7 +33,7 @@ import re, textwrap, new
 
 from txamqp import xmlutil
 
-class SpecContainer:
+class SpecContainer(object):
 
   def __init__(self):
     self.items = []
@@ -68,7 +68,7 @@ class SpecContainer:
   def __len__(self):
     return len(self.items)
 
-class Metadata:
+class Metadata(object):
 
   PRINT = []
 
