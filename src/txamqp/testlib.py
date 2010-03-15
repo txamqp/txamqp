@@ -23,7 +23,8 @@ import warnings
 from txamqp.content import Content
 import txamqp.spec
 
-from txamqp.protocol import AMQClient, TwistedDelegate
+from txamqp.protocol import AMQClient
+from txamqp.client import TwistedDelegate
 
 from twisted.internet import error, protocol, reactor
 from twisted.trial import unittest
