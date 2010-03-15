@@ -18,7 +18,6 @@
 #
 
 from txamqp.content import Content
-from txamqp import spec
 from txamqp.testlib import TestBase
 
 from twisted.internet.defer import inlineCallbacks

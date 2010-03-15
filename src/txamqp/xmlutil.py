@@ -60,7 +60,7 @@ class Node:
 
   def has(self, key):
     try:
-      result = self[key]
+      self[key]
       return True
     except KeyError:
       return False
@@ -121,4 +121,3 @@ class Builder(ContentHandler):
       self.node.text = content
     else:
       self.node.text += content
-

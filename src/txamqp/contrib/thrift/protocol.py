@@ -1,14 +1,12 @@
 from zope.interface import Interface, Attribute
 from txamqp.protocol import AMQClient
 from txamqp.contrib.thrift.transport import TwistedAMQPTransport
-from txamqp.content import Content
 from txamqp.queue import TimeoutDeferredQueue, Closed
 
 from twisted.internet import defer
 from twisted.python import log
 
-from thrift.protocol import TBinaryProtocol
-from thrift.transport import TTwisted, TTransport
+from thrift.transport import TTransport
 
 class ThriftAMQClient(AMQClient):
 

@@ -19,8 +19,7 @@
 
 import codec
 from cStringIO import StringIO
-from spec import load, pythonize
-from codec import EOF
+from spec import pythonize
 
 class Frame:
 
@@ -58,9 +57,9 @@ class Payload:
 
   type = None
 
-  def encode(self, enc): abstract
+  def encode(self, enc): raise NotImplementedError
 
-  def decode(spec, dec): abstract
+  def decode(spec, dec): raise NotImplementedError
 
 class Method(Payload):
 

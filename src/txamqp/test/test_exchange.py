@@ -24,7 +24,7 @@ Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
 
 from txamqp.queue import Empty
-from txamqp.testlib import TestBase, supportedBrokers, QPID, RABBITMQ, OPENAMQ
+from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
 from txamqp.content import Content
 from txamqp.client import Closed
 
@@ -353,4 +353,4 @@ class MiscellaneousErrorsTests(TestBase):
         c2 = yield other.channel(1)
         yield c2.channel_open()
         yield c2.exchange_delete(exchange="test_different_declared_type_exchange")
-    
+

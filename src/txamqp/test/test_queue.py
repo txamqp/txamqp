@@ -17,7 +17,6 @@
 # under the License.
 #
 from txamqp.client import Closed
-from txamqp.queue import Empty
 from txamqp.content import Content
 from txamqp.testlib import TestBase
 

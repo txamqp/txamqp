@@ -23,12 +23,11 @@ import warnings
 from txamqp.content import Content
 import txamqp.spec
 
-from txamqp.protocol import AMQChannel, AMQClient, TwistedDelegate
+from txamqp.protocol import AMQClient, TwistedDelegate
 
 from twisted.internet import error, protocol, reactor
 from twisted.trial import unittest
-from twisted.internet.defer import inlineCallbacks, Deferred, returnValue, DeferredQueue, DeferredLock
-from twisted.python import failure
+from twisted.internet.defer import inlineCallbacks, Deferred, returnValue
 from txamqp.queue import Empty
 
 
@@ -208,9 +207,3 @@ class TestBase(unittest.TestCase):
         Return the Queue object used to consume.
         """
         yield self.assertPublishGet((yield self.consume(queue)), exchange, routing_key, properties)
-
-    @inlineCallbacks
-    def consume(self, queueName):
-        """Consume from named queue returns the Queue object."""
-        reply = yield self.channel.basic_consume(queue=queueName, no_ack=True)
-        returnValue((yield self.client.queue(reply.consumer_tag)))

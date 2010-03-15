@@ -16,10 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from txamqp.client import Closed
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase, supportedBrokers, QPID, RABBITMQ, OPENAMQ
+from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
