@@ -51,7 +51,7 @@ class AMQChannel(object):
         self.queue.put(frame)
 
     @defer.inlineCallbacks
-    def invoke(self, method, args, content = None):
+    def invoke(self, method, args, content=None):
         if self.closed:
             raise Closed(self.reason)
         frame = Frame(self.id, Method(method, *args))
@@ -204,7 +204,7 @@ class AMQClient(FrameReceiver):
     # Max unreceived heartbeat frames. The AMQP standard says it's 3.
     MAX_UNSEEN_HEARTBEAT = 3
 
-    def __init__(self, delegate, vhost, spec, heartbeat=0, clock=None):
+    def __init__(self, delegate, vhost, spec, heartbeat=0, clock=None, insist=False):
         FrameReceiver.__init__(self, spec)
         self.delegate = delegate
 
@@ -231,6 +231,7 @@ class AMQClient(FrameReceiver):
         self.outgoing.get().addCallback(self.writer)
         self.work.get().addCallback(self.worker)
         self.heartbeatInterval = heartbeat
+        self.insist = insist
         if self.heartbeatInterval > 0:
             if clock is None:
                 from twisted.internet import reactor as clock
@@ -355,7 +356,8 @@ class AMQClient(FrameReceiver):
         yield self.started.wait()
 
         channel0 = yield self.channel(0)
-        yield channel0.connection_open(self.vhost)
+        result = yield channel0.connection_open(self.vhost, insist=self.insist)
+        defer.returnValue(result)
 
     def sendHeartbeat(self):
         self.sendFrame(Frame(0, Heartbeat()))
