@@ -47,7 +47,7 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) < 7:
         print "%s host port vhost username password path_to_spec" % sys.argv[0]
-        print "e.g. %s localhost 5672 / guest guest ../../specs/standard/amqp0-8.xml" % sys.argv[0]
+        print "e.g. %s localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml" % sys.argv[0]
         sys.exit(1)
 
     host = sys.argv[1]

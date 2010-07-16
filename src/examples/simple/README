@@ -13,10 +13,10 @@ Running
 1. Open two consoles:
    a) In one of them run the txconsumer.py script:
       $ python txconsumer.py host port vhost username password path_to_spec
-      e.g. txconsumer.py localhost 5672 / guest guest ../../specs/standard/amqp0-8.xml
+      e.g. txconsumer.py localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml
    b) In the other one run the txpublisher.py script:
       $ python txpublisher.py host port vhost username password path_to_spec content [count]
-      e.g. txpublisher.py localhost 5672 / guest guest ../../specs/standard/amqp0-8.xml hello 1000
+      e.g. txpublisher.py localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml hello 1000
 
 Where:
 - host: The host where the AMQP broker is located.
@@ -29,7 +29,7 @@ Where:
     is 'guest').
 - path_to_spec: The path to the AMQP spec that you want to use. Keep in mind
     that depending on the broker you use, you will need a different spec:
-    - RabbitMQ 1.5.3: $TXAMQP_PATH/src/specs/standard/amqp0-8.xml
+    - RabbitMQ 1.5.3: $TXAMQP_PATH/src/specs/rabbitmq/amqp0-8.stripped.xml
     - OpenAMQ 1.3c5: $TXAMQP_PATH/src/specs/standard/amqp0-9.xml
     - Qpid M3 (Java): $TXAMQP_PATH/src/specs/qpid/amqp.0-8.xml
 

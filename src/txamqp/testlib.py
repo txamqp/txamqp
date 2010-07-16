@@ -73,9 +73,9 @@ class TestBase(unittest.TestCase):
                 "environment variable to customized it.")
             self.broker = RABBITMQ
         if self.broker == RABBITMQ:
-            self.spec = '../specs/standard/amqp0-8.xml'
+            self.spec = '../specs/rabbitmq/amqp0-8.stripped.xml'
         elif self.broker == OPENAMQ:
-            self.spec = '../specs/standard/amqp0-9.xml'
+            self.spec = '../specs/standard/amqp0-9.stripped.xml'
         elif self.broker == QPID:
             self.spec = '../specs/qpid/amqp.0-8.xml'
         else:
