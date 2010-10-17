@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +18,14 @@
 #
 from txamqp.client import Closed
 from txamqp.content import Content
-from txamqp.testlib import TestBase
+from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
 
 from twisted.internet.defer import inlineCallbacks
 
 class QueueTests(TestBase):
     """Tests for 'methods' on the amqp queue 'class'"""
 
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_purge(self):
         """
@@ -45,7 +46,7 @@ class QueueTests(TestBase):
 
         #now do the purge, then test that three messages are purged and the count drops to 0
         reply = yield channel.queue_purge(queue="test-queue");
-        self.assertEqual(3, reply.message_count)        
+        self.assertEqual(3, reply.message_count)
         reply = yield channel.queue_declare(queue="test-queue")
         self.assertEqual(0, reply.message_count)
 
@@ -56,7 +57,7 @@ class QueueTests(TestBase):
         msg = yield queue.get(timeout=1)
         self.assertEqual("four", msg.content.body)
 
-        #check error conditions (use new channels): 
+        #check error conditions (use new channels):
         channel = yield self.client.channel(2)
         yield channel.channel_open()
         try:
@@ -75,7 +76,7 @@ class QueueTests(TestBase):
         except Closed, e:
             self.assertConnectionException(530, e.args[0])
 
-        #cleanup    
+        #cleanup
         other = yield self.connect()
         channel = yield other.channel(1)
         yield channel.channel_open()
@@ -142,7 +143,7 @@ class QueueTests(TestBase):
         except Closed, e:
             self.assertChannelException(404, e.args[0])
 
-        #need to reopen a channel:    
+        #need to reopen a channel:
         channel = yield self.client.channel(2)
         yield channel.channel_open()
 
@@ -164,7 +165,7 @@ class QueueTests(TestBase):
         yield channel.queue_declare(queue="delete-me")
         channel.basic_publish(routing_key="delete-me", content=Content("a"))
         channel.basic_publish(routing_key="delete-me", content=Content("b"))
-        channel.basic_publish(routing_key="delete-me", content=Content("c"))        
+        channel.basic_publish(routing_key="delete-me", content=Content("c"))
         reply = yield channel.queue_delete(queue="delete-me")
         self.assertEqual(3, reply.message_count)
         #check that it has gone be declaring passively
@@ -174,7 +175,7 @@ class QueueTests(TestBase):
         except Closed, e:
             self.assertChannelException(404, e.args[0])
 
-        #check attempted deletion of non-existant queue is handled correctly:    
+        #check attempted deletion of non-existant queue is handled correctly:
         channel = yield self.client.channel(2)
         yield channel.channel_open()
         try:
@@ -202,7 +203,7 @@ class QueueTests(TestBase):
         except Closed, e:
             self.assertChannelException(406, e.args[0])
 
-        #need new channel now:    
+        #need new channel now:
         channel = yield self.client.channel(2)
         yield channel.channel_open()
 
@@ -235,7 +236,7 @@ class QueueTests(TestBase):
         yield channel.queue_declare(queue="delete-me-3", passive="True")
         reply = yield channel.basic_consume(queue="delete-me-3", no_ack=True)
 
-        #need new channel now:    
+        #need new channel now:
         channel2 = yield self.client.channel(2)
         yield channel2.channel_open()
         #try to delete, but only if empty:
@@ -246,7 +247,7 @@ class QueueTests(TestBase):
             self.assertChannelException(406, e.args[0])
 
 
-        yield channel.basic_cancel(consumer_tag=reply.consumer_tag)    
+        yield channel.basic_cancel(consumer_tag=reply.consumer_tag)
         yield channel.queue_delete(queue="delete-me-3", if_unused="True")
         #check that it has gone by declaring passively:
         try:
