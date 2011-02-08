@@ -155,6 +155,7 @@ class BasicTests(TestBase):
         yield channel.basic_cancel(consumer_tag="my-consumer")
         yield channel.basic_cancel(consumer_tag="this-never-existed")
 
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_ack(self):
         """

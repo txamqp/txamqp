@@ -24,7 +24,7 @@ Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
 
 from txamqp.queue import Empty
-from txamqp.testlib import TestBase
+from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
 from txamqp.content import Content
 from txamqp.client import Closed
 
@@ -152,6 +152,7 @@ class DefaultExchangeRuleTests(TestBase, StandardExchangeVerifier):
     routing key but without specifying the exchange name, then ensuring that
     the message arrives in the queue correctly.
     """
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def testDefaultExchange(self):
         # Test automatic binding by queue name.
@@ -336,6 +337,7 @@ class MiscellaneousErrorsTests(TestBase):
         except Closed, e:
             self.assertConnectionException(503, e.args[0])
 
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def testDifferentDeclaredType(self):
         yield self.channel.exchange_declare(exchange="test_different_declared_type_exchange", type="direct")
