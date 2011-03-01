@@ -356,7 +356,10 @@ class AMQClient(FrameReceiver):
         yield self.started.wait()
 
         channel0 = yield self.channel(0)
-        result = yield channel0.connection_open(self.vhost, insist=self.insist)
+        if self.check_0_8():
+            result = yield channel0.connection_open(self.vhost, insist=self.insist)
+        else:
+            result = yield channel0.connection_open(self.vhost)
         defer.returnValue(result)
 
     def sendHeartbeat(self):
