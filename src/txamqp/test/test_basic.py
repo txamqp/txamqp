@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -71,7 +71,7 @@ class BasicTests(TestBase):
         except Closed, e:
             self.assertChannelException(403, e.args[0])
 
-        #open new channel and cleanup last consumer:    
+        #open new channel and cleanup last consumer:
         channel = yield self.client.channel(2)
         yield channel.channel_open()
 
@@ -84,9 +84,10 @@ class BasicTests(TestBase):
             self.assertChannelException(403, e.args[0])
 
     @inlineCallbacks
-    def test_consume_queue_errors(self):
+    def test_consume_queue_not_found(self):
         """
-        Test error conditions associated with the queue field of the consume method:
+        C{basic_consume} fails with a channel exception with a C{404} code when
+        the specified queue doesn't exist.
         """
         channel = self.channel
         try:
@@ -96,8 +97,14 @@ class BasicTests(TestBase):
         except Closed, e:
             self.assertChannelException(404, e.args[0])
 
-        channel = yield self.client.channel(2)
-        yield channel.channel_open()
+    @supportedBrokers(QPID, OPENAMQ)
+    @inlineCallbacks
+    def test_consume_queue_unspecified(self):
+        """
+        C{basic_consume} fails with a connection exception with a C{503} code
+        when no queue is specified.
+        """
+        channel = self.channel
         try:
             #queue not specified and none previously declared for channel:
             yield channel.basic_consume(queue="")
@@ -148,6 +155,7 @@ class BasicTests(TestBase):
         yield channel.basic_cancel(consumer_tag="my-consumer")
         yield channel.basic_cancel(consumer_tag="this-never-existed")
 
+    @supportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_ack(self):
         """
@@ -155,7 +163,7 @@ class BasicTests(TestBase):
         """
         channel = self.channel
         yield channel.queue_declare(queue="test-ack-queue", exclusive=True)
-        
+
         reply = yield channel.basic_consume(queue="test-ack-queue", no_ack=False)
         queue = yield self.client.queue(reply.consumer_tag)
 
@@ -164,13 +172,13 @@ class BasicTests(TestBase):
         channel.basic_publish(routing_key="test-ack-queue", content=Content("Three"))
         channel.basic_publish(routing_key="test-ack-queue", content=Content("Four"))
         channel.basic_publish(routing_key="test-ack-queue", content=Content("Five"))
-                
+
         msg1 = yield queue.get(timeout=1)
         msg2 = yield queue.get(timeout=1)
         msg3 = yield queue.get(timeout=1)
         msg4 = yield queue.get(timeout=1)
         msg5 = yield queue.get(timeout=1)
-        
+
         self.assertEqual("One", msg1.content.body)
         self.assertEqual("Two", msg2.content.body)
         self.assertEqual("Three", msg3.content.body)
@@ -181,10 +189,10 @@ class BasicTests(TestBase):
         channel.basic_ack(delivery_tag=msg4.delivery_tag, multiple=False) #Four
 
         yield channel.basic_recover(requeue=False)
-        
+
         msg3b = yield queue.get(timeout=1)
         msg5b = yield queue.get(timeout=1)
-        
+
         self.assertEqual("Three", msg3b.content.body)
         self.assertEqual("Five", msg5b.content.body)
 
@@ -200,7 +208,7 @@ class BasicTests(TestBase):
         """
         channel = self.channel
         yield channel.queue_declare(queue="test-requeue", exclusive=True)
-        
+
         subscription = yield channel.basic_consume(queue="test-requeue", no_ack=False)
         queue = yield self.client.queue(subscription.consumer_tag)
 
@@ -209,13 +217,13 @@ class BasicTests(TestBase):
         channel.basic_publish(routing_key="test-requeue", content=Content("Three"))
         channel.basic_publish(routing_key="test-requeue", content=Content("Four"))
         channel.basic_publish(routing_key="test-requeue", content=Content("Five"))
-                
+
         msg1 = yield queue.get(timeout=1)
         msg2 = yield queue.get(timeout=1)
         msg3 = yield queue.get(timeout=1)
         msg4 = yield queue.get(timeout=1)
         msg5 = yield queue.get(timeout=1)
-        
+
         self.assertEqual("One", msg1.content.body)
         self.assertEqual("Two", msg2.content.body)
         self.assertEqual("Three", msg3.content.body)
@@ -230,10 +238,10 @@ class BasicTests(TestBase):
         queue2 = yield self.client.queue(subscription2.consumer_tag)
 
         yield channel.basic_recover(requeue=True)
-        
+
         msg3b = yield queue2.get()
         msg5b = yield queue2.get()
-        
+
         self.assertEqual("Three", msg3b.content.body)
         self.assertEqual("Five", msg5b.content.body)
 
@@ -248,8 +256,7 @@ class BasicTests(TestBase):
             extra = yield queue.get(timeout=1)
             self.fail("Got unexpected message in original queue: " + extra.content.body)
         except Empty: None
-        
-    @supportedBrokers(QPID, OPENAMQ)
+
     @inlineCallbacks
     def test_qos_prefetch_count(self):
         """
@@ -348,7 +355,7 @@ class BasicTests(TestBase):
         """
         channel = self.channel
         yield channel.queue_declare(queue="test-get", exclusive=True)
-        
+
         #publish some messages (no_ack=True) with persistent messaging
         for i in range(1, 11):
             msg=Content("Message %d" % i)
@@ -401,7 +408,7 @@ class BasicTests(TestBase):
         self.assertEqual(reply.method.klass.name, "basic")
         self.assertEqual(reply.method.name, "get-empty")
 
-        #public some messages (no_ack=False) with transient messaging 
+        #public some messages (no_ack=False) with transient messaging
         for i in range(31, 41):
             channel.basic_publish(routing_key="test-get", content=Content("Message %d" % i))
 
@@ -421,7 +428,7 @@ class BasicTests(TestBase):
 
         #recover(requeue=True)
         yield channel.basic_recover(requeue=True)
-        
+
         #get the unacked messages again (34, 36, 38, 40)
         for i in [34, 36, 38, 40]:
             reply = yield channel.basic_get(no_ack=False)
