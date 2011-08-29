@@ -189,6 +189,8 @@ class Codec(object):
         value = self.decode_long()
       elif type == "F":
         value = self.decode_table()
+      elif type == "t":
+        value = (self.decode_octet() != 0)
       else:
         raise ValueError(repr(type))
       result[key] = value
