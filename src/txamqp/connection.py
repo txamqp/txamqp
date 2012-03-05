@@ -19,6 +19,7 @@
 
 import codec
 from cStringIO import StringIO
+from twisted.python import log
 from spec import pythonize
 
 class Frame(object):
@@ -145,6 +146,11 @@ class Header(Payload):
       v = self.properties.get(f.name)
       if v != None:
         c.encode(f.type, v)
+    unknown_props = set(self.properties.keys()) - \
+                    set([f.name for f in self.klass.fields])
+    if unknown_props:
+        log.msg("Unknown message properties: %s" % ", ".join(unknown_props))
+
     c.flush()
     enc.encode_longstr(buf.getvalue())
 
