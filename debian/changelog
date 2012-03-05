@@ -1,3 +1,9 @@
+python-txamqp (0.6-1ubuntu1~10.04) lucid; urgency=low
+
+  * Bump version.
+
+ --  <esteve@fluidinfo.com>  Mon, 05 Mar 2012 13:28:23 +0100
+
 python-txamqp (0.4-1ubuntu1~8.04) hardy; urgency=low
 
   * Bump version.

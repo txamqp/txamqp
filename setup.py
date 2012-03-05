@@ -1,9 +1,15 @@
 setupdict= {
     'name': 'txAMQP',
-    'version': '0.5',
+    'version': '0.6',
     'author': 'Esteve Fernandez',
     'author_email': 'esteve@fluidinfo.com',
     'url': 'https://launchpad.net/txamqp',
+    'description': 'Python library for communicating with AMQP peers and brokers using Twisted',
+    'long_description': '''This project contains all the necessary code to connect, send and receive messages to/from an AMQP-compliant peer or broker (Qpid, OpenAMQ, RabbitMQ) using Twisted.
+
+It also includes support for using Thrift RPC over AMQP in Twisted applications.
+
+txAMQP is sponsored by the friendly folks at Fluidinfo (http://www.fluidinfo.com).'''
     }
 
 try:
