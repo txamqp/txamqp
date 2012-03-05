@@ -106,4 +106,4 @@ class TwistedDelegate(Delegate):
 
     def close(self, reason):
         self.client.closed = True
-        self.client.started.fail_if_not_fired(reason)
+        self.client.started.fail_if_not_fired(Closed(reason))
