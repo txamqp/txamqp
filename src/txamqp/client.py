@@ -99,7 +99,7 @@ class TwistedDelegate(Delegate):
 
     def channel_close(self, ch, msg):
         ch.channel_close_ok()
-        ch.close(msg)
+        ch.doClose(msg)
 
     def connection_close(self, ch, msg):
         self.client.close(msg)

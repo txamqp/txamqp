@@ -2,6 +2,7 @@
 from twisted.internet import defer, protocol
 from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
+from twisted.python.failure import Failure
 from txamqp import spec
 from txamqp.codec import Codec
 from txamqp.connection import Header, Frame, Method, Body, Heartbeat
@@ -21,24 +22,35 @@ class GarbageException(Exception):
 # per connection
 class AMQChannel(object):
 
-    def __init__(self, id, outgoing):
+    def __init__(self, id, outgoing, client):
         self.id = id
         self.outgoing = outgoing
+        self.client = client
         self.incoming = TimeoutDeferredQueue()
         self.responses = TimeoutDeferredQueue()
 
         self.queue = None
 
+        self._closing = False
         self.closed = False
         self.reason = None
 
     def close(self, reason):
+        """Explicitely close a channel"""
+        self._closing = True
+        self.doClose(reason)
+        self._closing = False
+
+    def doClose(self, reason):
+        """Called when channel_close() is received"""
         if self.closed:
             return
         self.closed = True
         self.reason = reason
         self.incoming.close()
         self.responses.close()
+        if not self._closing:
+            self.client.channelFailed(self, Failure(reason))
 
     def dispatch(self, frame, work):
         payload = frame.payload
@@ -265,7 +277,7 @@ class AMQClient(FrameReceiver):
             try:
                 ch = self.channels[id]
             except KeyError:
-                ch = self.channelFactory(id, self.outgoing)
+                ch = self.channelFactory(id, self.outgoing, self)
                 self.channels[id] = ch
         finally:
             self.channelLock.release()
@@ -378,3 +390,7 @@ class AMQClient(FrameReceiver):
             if self.checkHB.active():
                 self.checkHB.cancel()
         self.close(reason)
+
+    def channelFailed(self, channel, reason):
+        """Unexpected channel close"""
+        pass
