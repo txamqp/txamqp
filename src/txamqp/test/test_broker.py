@@ -23,6 +23,32 @@ from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
 
 from twisted.internet.defer import inlineCallbacks
 
+class ASaslPlainAuthenticationTest(TestBase):
+    """Test for SASL PLAIN authentication Broker functionality"""
+
+    @inlineCallbacks
+    def authenticate(self,client,user,password):
+        yield client.authenticate(user, password,mechanism='PLAIN')
+
+    @inlineCallbacks
+    def test_sasl_plain(self):
+        channel = yield self.client.channel(200)
+        yield channel.channel_open()
+        yield channel.channel_close()
+
+class ASaslAmqPlainAuthenticationTest(TestBase):
+    """Test for SASL AMQPLAIN authentication Broker functionality"""
+
+    @inlineCallbacks
+    def authenticate(self,client,user,password):
+        yield client.authenticate(user, password,mechanism='AMQPLAIN')
+
+    @inlineCallbacks
+    def test_sasl_amq_plain(self):
+        channel = yield self.client.channel(200)
+        yield channel.channel_open()
+        yield channel.channel_close()
+
 class BrokerTests(TestBase):
     """Tests for basic Broker functionality"""
 
@@ -128,4 +154,3 @@ class BrokerTests(TestBase):
         msg = yield incoming.get(timeout=1)
         self.assertEqual("abcdefghijklmnopqrstuvwxyz", msg.content.body)
 
-        

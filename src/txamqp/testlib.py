@@ -73,7 +73,7 @@ class TestBase(unittest.TestCase):
                 "environment variable to customized it.")
             self.broker = RABBITMQ
         if self.broker == RABBITMQ:
-            self.spec = '../specs/rabbitmq/amqp0-8.stripped.rabbitmq.xml'
+            self.spec = '../specs/standard/amqp0-9.stripped.xml'
         elif self.broker == OPENAMQ:
             self.spec = '../specs/standard/amqp0-9.stripped.xml'
         elif self.broker == QPID:
@@ -116,8 +116,12 @@ class TestBase(unittest.TestCase):
         self.connectors.append(c)
         client = yield onConn
 
-        yield client.authenticate(user, password)
+        yield self.authenticate(client, user, password)
         returnValue(client)
+
+    @inlineCallbacks
+    def authenticate(self,client,user,password):
+        yield client.authenticate(user, password)
 
     @inlineCallbacks
     def setUp(self):

@@ -352,10 +352,12 @@ class AMQClient(FrameReceiver):
 
     @defer.inlineCallbacks
     def authenticate(self, username, password, mechanism='AMQPLAIN', locale='en_US'):
-        if self.check_0_8():
+        if mechanism == 'AMQPLAIN':
             response = {"LOGIN": username, "PASSWORD": password}
-        else:
+        elif mechanism == 'PLAIN':
             response = "\0" + username + "\0" + password
+        else:
+            raise ValueError('Unknown mechanism:'+mechanism)
 
         yield self.start(response, mechanism, locale)
 
