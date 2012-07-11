@@ -105,9 +105,12 @@ class AMQChannel(object):
         queue.put(header)
         for child in content.children:
             self.writeContent(klass, child, queue)
-        # should split up if content.body exceeds max frame size
         if size > 0:
-            queue.put(Frame(self.id, Body(content.body)))
+            maxChunkSize = self.client.MAX_LENGTH - 8
+            for i in xrange(0, len(content.body), maxChunkSize):
+                chunk = content.body[i:i + maxChunkSize]
+                queue.put(Frame(self.id, Body(chunk)))
+
 
 class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
 

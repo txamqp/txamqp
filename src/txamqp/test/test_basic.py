@@ -446,3 +446,24 @@ class BasicTests(TestBase):
         reply = yield channel.basic_get(no_ack=True)
         self.assertEqual(reply.method.klass.name, "basic")
         self.assertEqual(reply.method.name, "get-empty")
+
+    @inlineCallbacks
+    def test_fragment_body(self):
+        """
+        Body frames must be fragmented according to the broker frame_max
+        parameter.
+        """
+
+        channel = self.channel
+        yield channel.queue_declare(queue="test-get", exclusive=True)
+
+        largeString = ''.join('x' for x in range(self.client.MAX_LENGTH * 2))
+
+        msg = Content(largeString)
+        msg["delivery mode"] = 2
+        channel.basic_publish(routing_key="test-get",content=msg )
+
+        reply = yield channel.basic_get(no_ack=True)
+        self.assertEqual(reply.method.klass.name, "basic")
+        self.assertEqual(reply.method.name, "get-ok")
+        self.assertEqual(largeString, reply.content.body)

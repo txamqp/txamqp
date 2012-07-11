@@ -24,7 +24,7 @@ from twisted.internet.defer import inlineCallbacks
 
 class ExampleTest(TestBase):
     """
-    An example Qpid test, illustrating the unittest frameowkr and the
+    An example Qpid test, illustrating the unittest framework and the
     python Qpid client. The test class must inherit TestCase.  The
     test code uses the Qpid client to interact with a qpid broker and
     verify it behaves as expected.
