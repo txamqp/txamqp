@@ -1,3 +1,9 @@
+python-txamqp (0.6.2-1ubuntu1~12.04) precise; urgency=low
+
+  * Bump version.
+
+ -- Esteve Fernandez <esteve@apache.org>  Sun, 03 Mar 2013 14:39:23 +0100
+
 python-txamqp (0.6.1-1ubuntu1~10.04) lucid; urgency=low
 
   * Bump version.
