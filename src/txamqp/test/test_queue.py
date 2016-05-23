@@ -168,18 +168,37 @@ class QueueTests(TestBase):
         channel.basic_publish(routing_key="delete-me", content=Content("c"))
         reply = yield channel.queue_delete(queue="delete-me")
         self.assertEqual(3, reply.message_count)
-        #check that it has gone be declaring passively
+        #check that it has gone by declaring passively
         try:
             yield channel.queue_declare(queue="delete-me", passive="True")
             self.fail("Queue has not been deleted")
         except Closed, e:
             self.assertChannelException(404, e.args[0])
 
+    @inlineCallbacks
+    def test_delete_non_existing(self):
+        """
+        Attempting to delete a non-existing queue raises a 404.
+
+        Will be skipped for Rabbitmq 3.2 or higher, since deleting a non
+        existing queue silently succeeds, see:
+
+        http://hg.rabbitmq.com/rabbitmq-server/rev/8eaec8dfbc41
+        http://lists.rabbitmq.com/pipermail/rabbitmq-discuss/2014-January/032970.html
+        http://www.rabbitmq.com/specification.html (search for "queue.delete")
+        """
+        server_properties = self.client.delegate.server_properties
+        if server_properties["product"] == "RabbitMQ":
+            version = tuple(map(int, server_properties["version"].split(".")))
+            if version >= (3, 2, 0):
+                self.skipTest("Not supported for this broker.")
+
         #check attempted deletion of non-existant queue is handled correctly:
         channel = yield self.client.channel(2)
         yield channel.channel_open()
         try:
-            yield channel.queue_delete(queue="i-dont-exist", if_empty="True")
+            result = yield channel.queue_delete(queue="i-dont-exist", if_empty="True")
+            print result
             self.fail("Expected delete of non-existant queue to fail")
         except Closed, e:
             self.assertChannelException(404, e.args[0])

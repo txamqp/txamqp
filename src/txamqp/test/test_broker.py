@@ -81,8 +81,19 @@ class BrokerTests(TestBase):
     @inlineCallbacks
     def test_basic_delivery_immediate(self):
         """
-        Test basic message delivery where consume is issued before publish
+        Test basic message delivery where consume is issued before publish.
+
+        Will be skipped for RabbitMQ 3.0 or higher, since support for the
+        'immediate' flag was removed, see:
+
+        http://www.rabbitmq.com/blog/2012/11/19/breaking-things-with-rabbitmq-3-0
         """
+        server_properties = self.client.delegate.server_properties
+        if server_properties["product"] == "RabbitMQ":
+            version = tuple(map(int, server_properties["version"].split(".")))
+            if version >= (3, 0, 0):
+                self.skipTest("Not supported for this broker.")
+
         channel = self.channel
         yield self.exchange_declare(channel, exchange="test-exchange", type="direct")
         yield self.queue_declare(channel, queue="test-queue") 

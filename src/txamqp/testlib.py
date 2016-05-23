@@ -56,6 +56,15 @@ PASSWORD='guest'
 VHOST='/'
 HEARTBEAT = 0
 
+
+class TestDelegate(TwistedDelegate):
+    """A delegate exposing test-related information, e.g server properties."""
+
+    def connection_start(self, ch, msg):
+        self.server_properties = msg.server_properties
+        super(TestDelegate, self).connection_start(ch, msg)
+
+
 class TestBase(unittest.TestCase):
 
     clientClass = AMQClient
@@ -101,7 +110,7 @@ class TestBase(unittest.TestCase):
         heartbeat = heartbeat or self.heartbeat
         clientClass = clientClass or self.clientClass
 
-        delegate = TwistedDelegate()
+        delegate = TestDelegate()
         onConn = Deferred()
         p = clientClass(delegate, vhost, txamqp.spec.load(spec), heartbeat=heartbeat)
         f = protocol._InstanceFactory(reactor, p, onConn)
