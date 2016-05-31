@@ -29,9 +29,14 @@ class so that the generated code can be reused in a variety of
 situations.
 """
 
-import re, textwrap, new
+import re, textwrap, new, os
 
 from txamqp import xmlutil
+
+
+DEFAULT_SPEC = os.path.join(
+    os.path.dirname(__file__), "../specs/standard/amqp0-9.stripped.xml")
+
 
 class SpecContainer(object):
 

@@ -247,10 +247,11 @@ class AMQClient(FrameReceiver):
         self.work.get().addCallback(self.worker)
         self.heartbeatInterval = heartbeat
         self.insist = insist
+        if clock is None:
+            from twisted.internet import reactor
+            clock = reactor
+        self.clock = clock
         if self.heartbeatInterval > 0:
-            if clock is None:
-                from twisted.internet import reactor as clock
-            self.clock = clock
             self.checkHB = self.clock.callLater(self.heartbeatInterval *
                           self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
             self.sendHB = LoopingCall(self.sendHeartbeat)

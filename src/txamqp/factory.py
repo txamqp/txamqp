@@ -16,16 +16,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import os
-
 from twisted.internet.protocol import Factory
 
 from txamqp.protocol import AMQClient
-from txamqp.spec import load
+from txamqp.spec import DEFAULT_SPEC, load
 from txamqp.client import TwistedDelegate
-
-DEFAULT_SPEC = os.path.join(
-    os.path.dirname(__file__), "../specs/standard/amqp0-9.stripped.xml")
 
 
 class AMQFactory(Factory):
@@ -42,7 +37,6 @@ class AMQFactory(Factory):
             spec = DEFAULT_SPEC
         self._spec = load(spec)
         self._clock = clock
-        self._delegate = TwistedDelegate()
         self._vhost = "/"
         self._heartbeat = 0
 
@@ -55,7 +49,8 @@ class AMQFactory(Factory):
         self._heartbeat = heartbeat
 
     def buildProtocol(self, addr):
+        delegate = TwistedDelegate()
         protocol = self.protocol(
-            self._delegate, vhost=self._vhost, spec=self._spec,
+            delegate, vhost=self._vhost, spec=self._spec,
             heartbeat=self._heartbeat, clock=self._clock)
         return protocol
