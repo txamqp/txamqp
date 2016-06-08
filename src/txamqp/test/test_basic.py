@@ -264,12 +264,13 @@ class BasicTests(TestBase):
         """
         #setup: declare queue and subscribe
         channel = self.channel
-        yield channel.queue_declare(queue="test-prefetch-count", exclusive=True)
-        subscription = yield channel.basic_consume(queue="test-prefetch-count", no_ack=False)
-        queue = yield self.client.queue(subscription.consumer_tag)
 
         #set prefetch to 5:
         yield channel.basic_qos(prefetch_count=5)
+
+        yield channel.queue_declare(queue="test-prefetch-count", exclusive=True)
+        subscription = yield channel.basic_consume(queue="test-prefetch-count", no_ack=False)
+        queue = yield self.client.queue(subscription.consumer_tag)
 
         #publish 10 messages:
         for i in range(1, 11):
