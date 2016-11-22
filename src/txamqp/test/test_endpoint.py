@@ -100,4 +100,4 @@ class AMQEndpointIntegrationTest(IntegrationTest):
         client = yield endpoint.connect(factory)
         channel = yield client.channel(1)
         yield channel.channel_open()
-        client.close(None)
+        yield client.close()

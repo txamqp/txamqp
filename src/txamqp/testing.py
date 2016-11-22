@@ -80,10 +80,14 @@ class AMQPump(object):
         self._log("Outgoing frame: {frame}", frame=frame)
 
     def loseConnection(self):
+        if not self.connected:
+            return
         self.connected = False
         self.client.connectionLost(Failure(ConnectionDone()))
 
     def abortConnection(self):
+        if not self.connected:
+            return
         self.connected = False
         self.aborted = True
         self.client.connectionLost(Failure(ConnectionLost()))

@@ -102,7 +102,12 @@ class TwistedDelegate(Delegate):
         ch.doClose(msg)
 
     def connection_close(self, ch, msg):
-        self.client.close(msg)
+        # The server wants to close the connection, so let's send
+        # a connection-close-ok and start shutting down the connection. The
+        # close-ok frame will be buffered by the transport and sent to
+        # the server before actually closing the socket.
+        ch.connection_close_ok()
+        self.client.doClose(msg)
 
     def close(self, reason):
         self.client.closed = True

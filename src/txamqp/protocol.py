@@ -1,6 +1,7 @@
 # coding: utf-8
 from twisted.internet import defer, protocol
 from twisted.internet.task import LoopingCall
+from twisted.internet.error import ConnectionDone
 from twisted.protocols import basic
 from twisted.python.failure import Failure
 from txamqp import spec
@@ -36,7 +37,7 @@ class AMQChannel(object):
         self.reason = None
 
     def close(self, reason):
-        """Explicitely close a channel"""
+        """Explicitly close a channel"""
         self._closing = True
         self.doClose(reason)
         self._closing = False
@@ -237,6 +238,8 @@ class AMQClient(FrameReceiver):
         self.work = defer.DeferredQueue()
 
         self.started = TwistedEvent()
+        self.disconnected = TwistedEvent()  # Fired upon connection shutdown
+        self.closed = False
 
         self.queueLock = defer.DeferredLock()
         self.basic_return_queue = TimeoutDeferredQueue()
@@ -255,9 +258,12 @@ class AMQClient(FrameReceiver):
             self.checkHB = self.clock.callLater(self.heartbeatInterval *
                           self.MAX_UNSEEN_HEARTBEAT, self.checkHeartbeat)
             self.sendHB = LoopingCall(self.sendHeartbeat)
+            self.sendHB.clock = self.clock
             d = self.started.wait()
             d.addCallback(lambda _: self.reschedule_sendHB())
             d.addCallback(lambda _: self.reschedule_checkHB())
+            # If self.started fails, don't start the heartbeat.
+            d.addErrback(lambda _: None)
 
     def reschedule_sendHB(self):
         if self.heartbeatInterval > 0:
@@ -294,13 +300,48 @@ class AMQClient(FrameReceiver):
             try:
                 q = self.queues[key]
             except KeyError:
-                q = TimeoutDeferredQueue()
+                q = TimeoutDeferredQueue(clock=self.clock)
                 self.queues[key] = q
         finally:
             self.queueLock.release()
         defer.returnValue(q)
 
-    def close(self, reason):
+    @defer.inlineCallbacks
+    def close(self, reason=None, within=0):
+        """Explicitely close the connection.
+
+        @param reason: Optional closing reason. If not given, ConnectionDone
+            will be used.
+        @param within: Shutdown the client within this amount of seconds. If
+            zero (the default), all channels and queues will be closed
+            immediately. If greater than 0, try to close the AMQP connection
+            cleanly, by sending a "close" method and waiting for "close-ok". If
+            no reply is received within the given amount of seconds, the
+            transport will be forcely shutdown.
+            """
+        if self.closed:
+            return
+
+        if reason is None:
+            reason = ConnectionDone()
+
+        if within > 0:
+            channel0 = yield self.channel(0)
+            deferred = channel0.connection_close()
+            call = self.clock.callLater(within, deferred.cancel)
+            try:
+                yield deferred
+            except defer.CancelledError:
+                pass
+            else:
+                call.cancel()
+
+        self.doClose(reason)
+
+    def doClose(self, reason):
+        """Called when connection_close() is received"""
+        # Let's close all channels and queues, since we don't want to write
+        # any more data and no further read will happen.
         for ch in self.channels.values():
             ch.close(reason)
         for q in self.queues.values():
@@ -351,7 +392,7 @@ class AMQClient(FrameReceiver):
             self.lastHBReceived = time()
         else:
             ch.dispatch(frame, self.work)
-        if self.heartbeatInterval > 0:
+        if self.heartbeatInterval > 0 and not self.closed:
             self.reschedule_checkHB()
 
     @defer.inlineCallbacks
@@ -387,7 +428,10 @@ class AMQClient(FrameReceiver):
     def checkHeartbeat(self):
         if self.checkHB.active():
             self.checkHB.cancel()
-        self.transport.loseConnection()
+        # Abort the connection, since the other pear is unresponsive and
+        # there's no point in shutting down cleanly and trying to flush
+        # pending data.
+        self.transport.abortConnection()
 
     def connectionLost(self, reason):
         if self.heartbeatInterval > 0:
@@ -396,6 +440,7 @@ class AMQClient(FrameReceiver):
             if self.checkHB.active():
                 self.checkHB.cancel()
         self.close(reason)
+        self.disconnected.fire()
 
     def channelFailed(self, channel, reason):
         """Unexpected channel close"""

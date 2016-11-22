@@ -165,3 +165,12 @@ class BrokerTests(TestBase):
         msg = yield incoming.get(timeout=1)
         self.assertEqual("abcdefghijklmnopqrstuvwxyz", msg.content.body)
 
+    @inlineCallbacks
+    def test_close_cleanly(self):
+        """
+        Test closing a client cleanly, by sending 'close' and waiting for
+        'close-ok'.
+        """
+        yield self.client.close(within=5)
+        yield self.client.disconnected.wait()
+        self.assertTrue(self.client.closed)
