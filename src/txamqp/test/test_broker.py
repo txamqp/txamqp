@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from txamqp.client import Closed
+from txamqp.client import ConnectionClosed
 from txamqp.queue import Empty
 from txamqp.content import Content
 from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
@@ -132,7 +132,7 @@ class BrokerTests(TestBase):
         try:
             yield channel.queue_declare(exclusive=True)
             self.fail("Expected error on queue_declare for invalid channel")
-        except Closed, e:
+        except ConnectionClosed as e:
             self.assertConnectionException(504, e.args[0])
     
     @inlineCallbacks
@@ -143,7 +143,7 @@ class BrokerTests(TestBase):
         try:
             yield channel.queue_declare(exclusive=True)
             self.fail("Expected error on queue_declare for closed channel")
-        except Closed, e:
+        except ConnectionClosed as e:
             self.assertConnectionException(504, e.args[0])
 
     @supportedBrokers(QPID, OPENAMQ)

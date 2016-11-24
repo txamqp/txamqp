@@ -4,7 +4,8 @@ from twisted.internet.error import ConnectionLost
 from twisted.logger import Logger
 
 from txamqp.protocol import AMQClient
-from txamqp.client import TwistedDelegate, Closed
+from txamqp.client import (
+    TwistedDelegate, Closed, ConnectionClosed, ChannelClosed)
 from txamqp.testing import AMQPump
 from txamqp.spec import DEFAULT_SPEC, load
 from txamqp.queue import Closed as QueueClosed
@@ -33,6 +34,14 @@ class AMQClientTest(TestCase):
         self.assertTrue(self.protocol.closed)
         channel0 = self.successResultOf(self.protocol.channel(0))
         self.assertTrue(channel0.closed)
+
+    def test_connection_close_raises_error(self):
+        """Test receiving a connection-close method raises ConnectionClosed."""
+        channel = self.successResultOf(self.protocol.channel(0))
+        d = channel.basic_consume(queue="test-queue")
+        self.transport.channel(0).connection_close(reply_code=320)
+        failure = self.failureResultOf(d)
+        self.assertIsInstance(failure.value, ConnectionClosed)
 
     def test_close(self):
         """Test explicitely closing a client."""
@@ -105,6 +114,25 @@ class AMQClientTest(TestCase):
         failure = self.failureResultOf(d)
         self.assertIsInstance(failure.value, Closed)
         self.assertIsInstance(failure.value.args[0].value, ConnectionLost)
+
+    def test_channel_close(self):
+        """Test receiving a channel-close method raises ChannelClosed."""
+        channel = self.successResultOf(self.protocol.channel(0))
+        d = channel.basic_consume(queue="non-existing-queue")
+        self.transport.channel(0).channel_close(reply_code=404)
+        failure = self.failureResultOf(d)
+        self.assertIsInstance(failure.value, ChannelClosed)
+
+    def test_sending_method_on_closed_channel(self):
+        """Sending a method on a closed channel fails immediately."""
+        channel = self.successResultOf(self.protocol.channel(0))
+        self.transport.channel(0).connection_close(reply_code=320)
+        self.transport.outgoing.clear()
+        d = channel.basic_consume(queue="test-queue")
+        # No frames were sent
+        self.assertEqual({}, self.transport.outgoing)
+        failure = self.failureResultOf(d)
+        self.assertIsInstance(failure.value, ConnectionClosed)
 
     def test_disconnected_event(self):
         """Test disconnected event fired after the connection is lost."""

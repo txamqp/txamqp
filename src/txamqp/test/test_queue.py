@@ -64,7 +64,7 @@ class QueueTests(TestBase):
             #queue specified but doesn't exist:
             yield channel.queue_purge(queue="invalid-queue")
             self.fail("Expected failure when purging non-existent queue")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
         channel = yield self.client.channel(3)
@@ -73,7 +73,7 @@ class QueueTests(TestBase):
             #queue not specified and none previously declared for channel:
             yield channel.queue_purge()
             self.fail("Expected failure when purging unspecified queue")
-        except Closed, e:
+        except Closed as e:
             self.assertConnectionException(530, e.args[0])
 
         #cleanup
@@ -100,7 +100,7 @@ class QueueTests(TestBase):
             #other connection should not be allowed to declare this:
             yield c2.queue_declare(queue="exclusive-queue", exclusive="True")
             self.fail("Expected second exclusive queue_declare to raise a channel exception")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(405, e.args[0])
 
     @inlineCallbacks
@@ -116,7 +116,7 @@ class QueueTests(TestBase):
             #other connection should not be allowed to declare this:
             yield channel.queue_declare(queue="passive-queue-2", passive="True")
             self.fail("Expected passive declaration of non-existant queue to raise a channel exception")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
     @inlineCallbacks
@@ -140,7 +140,7 @@ class QueueTests(TestBase):
         try:
             yield channel.queue_bind(queue="queue-1", exchange="an-invalid-exchange", routing_key="key1")
             self.fail("Expected bind to non-existant exchange to fail")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
         #need to reopen a channel:
@@ -151,7 +151,7 @@ class QueueTests(TestBase):
         try:
             yield channel.queue_bind(queue="queue-2", exchange="amq.direct", routing_key="key1")
             self.fail("Expected bind of non-existant queue to fail")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
     @inlineCallbacks
@@ -172,7 +172,7 @@ class QueueTests(TestBase):
         try:
             yield channel.queue_declare(queue="delete-me", passive="True")
             self.fail("Queue has not been deleted")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
     @inlineCallbacks
@@ -200,7 +200,7 @@ class QueueTests(TestBase):
             result = yield channel.queue_delete(queue="i-dont-exist", if_empty="True")
             print result
             self.fail("Expected delete of non-existant queue to fail")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
     @inlineCallbacks
@@ -219,7 +219,7 @@ class QueueTests(TestBase):
         try:
             yield channel.queue_delete(queue="delete-me-2", if_empty="True")
             self.fail("Expected delete if_empty to fail for non-empty queue")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(406, e.args[0])
 
         #need new channel now:
@@ -240,7 +240,7 @@ class QueueTests(TestBase):
         try:
             yield channel.queue_declare(queue="delete-me-2", passive="True")
             self.fail("Queue has not been deleted")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
     @inlineCallbacks
@@ -262,7 +262,7 @@ class QueueTests(TestBase):
         try:
             yield channel2.queue_delete(queue="delete-me-3", if_unused="True")
             self.fail("Expected delete if_unused to fail for queue with existing consumer")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(406, e.args[0])
 
 
@@ -272,7 +272,7 @@ class QueueTests(TestBase):
         try:
             yield channel.queue_declare(queue="delete-me-3", passive="True")
             self.fail("Queue has not been deleted")
-        except Closed, e:
+        except Closed as e:
             self.assertChannelException(404, e.args[0])
 
 

@@ -24,9 +24,9 @@ Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
 
 from txamqp.queue import Empty
-from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
+from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ, RABBITMQ
 from txamqp.content import Content
-from txamqp.client import Closed
+from txamqp.client import ChannelClosed, ConnectionClosed
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -238,7 +238,7 @@ class DeclareMethodPassiveFieldNotFoundRuleTests(TestBase):
         try:
             yield self.channel.exchange_declare(exchange="humpty_dumpty", passive=True)
             self.fail("Expected 404 for passive declaration of unknown exchange.")
-        except Closed, e:
+        except ChannelClosed as e:
             self.assertChannelException(404, e.args[0])
 
 
@@ -334,7 +334,7 @@ class MiscellaneousErrorsTests(TestBase):
         try:
             yield self.channel.exchange_declare(exchange="test_type_not_known_exchange", type="invalid_type")
             self.fail("Expected 503 for declaration of unknown exchange type.")
-        except Closed, e:
+        except ConnectionClosed as e:
             self.assertConnectionException(503, e.args[0])
 
     @supportedBrokers(QPID, OPENAMQ)
@@ -344,7 +344,7 @@ class MiscellaneousErrorsTests(TestBase):
         try:
             yield self.channel.exchange_declare(exchange="test_different_declared_type_exchange", type="topic")
             self.fail("Expected 530 for redeclaration of exchange with different type.")
-        except Closed, e:
+        except ConnectionClosed as e:
             self.assertConnectionException(530, e.args[0])
         #cleanup    
         other = yield self.connect()
@@ -352,3 +352,24 @@ class MiscellaneousErrorsTests(TestBase):
         yield c2.channel_open()
         yield c2.exchange_delete(exchange="test_different_declared_type_exchange")
 
+    @supportedBrokers(RABBITMQ)
+    @inlineCallbacks
+    def testDifferentDeclaredTypeRabbit(self):
+        """Test redeclaration of exchange with different type on RabbitMQ."""
+        yield self.channel.exchange_declare(
+            exchange="test_different_declared_type_exchange", type="direct")
+        try:
+            yield self.channel.exchange_declare(
+                exchange="test_different_declared_type_exchange", type="topic")
+            self.fail(
+                "Expected 406 for redeclaration of exchange with "
+                "different type.")
+        except ChannelClosed as e:
+            self.assertChannelException(406, e.args[0])
+        finally:
+            # cleanup
+            other = yield self.connect()
+            c2 = yield other.channel(1)
+            yield c2.channel_open()
+            yield c2.exchange_delete(
+                exchange="test_different_declared_type_exchange")

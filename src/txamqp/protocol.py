@@ -10,7 +10,7 @@ from txamqp.connection import Header, Frame, Method, Body, Heartbeat
 from txamqp.message import Message
 from txamqp.content import Content
 from txamqp.queue import TimeoutDeferredQueue, Closed as QueueClosed
-from txamqp.client import TwistedEvent, Closed
+from txamqp.client import TwistedEvent, Closed, ConnectionClosed, ChannelClosed
 from cStringIO import StringIO
 import struct
 from time import time
@@ -66,7 +66,7 @@ class AMQChannel(object):
     @defer.inlineCallbacks
     def invoke(self, method, args, content=None):
         if self.closed:
-            raise Closed(self.reason)
+            self._raiseClosed(self.reason)
         frame = Frame(self.id, Method(method, *args))
         self.outgoing.put(frame)
 
@@ -96,7 +96,7 @@ class AMQChannel(object):
                     raise ValueError(resp)
         except QueueClosed, e:
             if self.closed:
-                raise Closed(self.reason)
+                self._raiseClosed(self.reason)
             else:
                 raise e
 
@@ -111,6 +111,15 @@ class AMQChannel(object):
             for i in xrange(0, len(content.body), maxChunkSize):
                 chunk = content.body[i:i + maxChunkSize]
                 queue.put(Frame(self.id, Body(chunk)))
+
+    def _raiseClosed(self, reason):
+        """Raise the appropriate Closed-based error for the given reason."""
+        if isinstance(reason, Message):
+            if reason.method.klass.name == "channel":
+                raise ChannelClosed(reason)
+            elif reason.method.klass.name == "connection":
+                raise ConnectionClosed(reason)
+        raise Closed(reason)
 
 
 class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
@@ -318,7 +327,7 @@ class AMQClient(FrameReceiver):
             cleanly, by sending a "close" method and waiting for "close-ok". If
             no reply is received within the given amount of seconds, the
             transport will be forcely shutdown.
-            """
+        """
         if self.closed:
             return
 

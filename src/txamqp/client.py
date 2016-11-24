@@ -2,11 +2,32 @@
 from twisted.internet import defer
 from txamqp.delegate import Delegate
 
+
 class Closed(Exception):
-    pass
+    """Raised if either a channel or the whole connection got closed."""
+
+
+class ChannelClosed(Closed):
+    """Raised if a channel got closed because of a channel error.
+
+    This happens when the broker sends us a 'channel-close' method.
+
+    @see: The AMQP specification for possible channel error codes.
+    """
+
+
+class ConnectionClosed(Closed):
+    """Raised if the connection got closed because of a connection error.
+
+    This happens when the broker sends us a 'connection-close' method.
+
+    @see: The AMQP specification for possible connection error codes.
+    """
+
 
 class AlreadyFiredError(Exception):
     pass
+
 
 class TwistedEvent(object):
     """

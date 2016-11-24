@@ -16,10 +16,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from txamqp.client import Closed
+from txamqp.client import ConnectionClosed, ChannelClosed
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
+from txamqp.testlib import (
+    TestBase, supportedBrokers, QPID, OPENAMQ, RABBITMQ)
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -68,7 +69,7 @@ class BasicTests(TestBase):
         try:
             yield channel.basic_consume(consumer_tag="second", queue="test-queue-2")
             self.fail("Expected consume request to fail due to previous exclusive consumer")
-        except Closed, e:
+        except ChannelClosed as e:
             self.assertChannelException(403, e.args[0])
 
         #open new channel and cleanup last consumer:
@@ -80,7 +81,7 @@ class BasicTests(TestBase):
         try:
             yield channel.basic_consume(consumer_tag="second", queue="test-queue-2", exclusive=True)
             self.fail("Expected exclusive consume request to fail due to previous consumer")
-        except Closed, e:
+        except ChannelClosed as e:
             self.assertChannelException(403, e.args[0])
 
     @inlineCallbacks
@@ -94,7 +95,7 @@ class BasicTests(TestBase):
             #queue specified but doesn't exist:
             yield channel.basic_consume(queue="invalid-queue")
             self.fail("Expected failure when consuming from non-existent queue")
-        except Closed, e:
+        except ChannelClosed as e:
             self.assertChannelException(404, e.args[0])
 
     @supportedBrokers(QPID, OPENAMQ)
@@ -109,8 +110,23 @@ class BasicTests(TestBase):
             #queue not specified and none previously declared for channel:
             yield channel.basic_consume(queue="")
             self.fail("Expected failure when consuming from unspecified queue")
-        except Closed, e:
+        except ConnectionClosed as e:
             self.assertConnectionException(530, e.args[0])
+
+    @supportedBrokers(RABBITMQ)
+    @inlineCallbacks
+    def test_consume_queue_unspecified_rabbit(self):
+        """
+        C{basic_consume} fails with a channel exception with a C{404} code
+        when no queue is specified.
+        """
+        channel = self.channel
+        try:
+            #queue not specified and none previously declared for channel:
+            yield channel.basic_consume(queue="")
+            self.fail("Expected failure when consuming from unspecified queue")
+        except ChannelClosed as e:
+            self.assertChannelException(404, e.args[0])
 
     @inlineCallbacks
     def test_consume_unique_consumers(self):
@@ -126,7 +142,7 @@ class BasicTests(TestBase):
         try:
             yield channel.basic_consume(consumer_tag="first", queue="test-queue-3")
             self.fail("Expected consume request to fail due to non-unique tag")
-        except Closed, e:
+        except ConnectionClosed as e:
             self.assertConnectionException(530, e.args[0])
 
     @inlineCallbacks
