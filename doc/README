@@ -1,5 +1,5 @@
 ## Python library for communicating with AMQP peers and brokers using Twisted
-[![Build Status](https://travis-ci.org/freeekanayaka/txamqp.svg?branch=master)](https://travis-ci.org/freeekanayaka/txamqp)
+[![Build Status](https://travis-ci.org/txamqp/txamqp.svg?branch=master)](https://travis-ci.org/txamqp/txamqp)
 
 This is a quick post on getting started using the txAMQP library with RabbitMQ,
 based on Dan Reverri's article "Getting started with RabbitMQ, Python, Twisted,
