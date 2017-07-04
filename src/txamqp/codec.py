@@ -24,7 +24,7 @@ Utility code to translate between python objects and AMQP encoded data
 fields.
 """
 
-from cStringIO import StringIO
+from io import BytesIO
 from struct import pack, calcsize, unpack
 
 class EOF(Exception):
@@ -130,9 +130,18 @@ class Codec(object):
   def enc_str(self, fmt, s):
     size = len(s)
     self.pack(fmt, size)
+    self.write(s.encode())
+
+  def enc_bytes(self, fmt, s):
+    size = len(s)
+    self.pack(fmt, size)
     self.write(s)
 
   def dec_str(self, fmt):
+    size = self.unpack(fmt)
+    return self.read(size).decode()
+
+  def dec_bytes(self, fmt):
     size = self.unpack(fmt)
     return self.read(size)
 
@@ -150,8 +159,17 @@ class Codec(object):
     else:
       self.enc_str("!L", s)
 
+  def encode_longbytes(self, s):
+    if isinstance(s, dict):
+      self.encode_table(s)
+    else:
+      self.enc_bytes("!L", s)
+
   def decode_longstr(self):
     return self.dec_str("!L")
+
+  def decode_longbytes(self):
+    return self.dec_bytes("!L")
 
   # timestamp
   def encode_timestamp(self, o):
@@ -162,15 +180,15 @@ class Codec(object):
 
   # table
   def encode_table(self, tbl):
-    enc = StringIO()
+    enc = BytesIO()
     codec = Codec(enc)
     for key, value in tbl.items():
       codec.encode_shortstr(key)
-      if isinstance(value, basestring):
-        codec.write("S")
+      if isinstance(value, str):
+        codec.write(b"S")
         codec.encode_longstr(value)
       else:
-        codec.write("I")
+        codec.write(b"I")
         codec.encode_long(value)
     s = enc.getvalue()
     self.encode_long(len(s))
@@ -183,13 +201,13 @@ class Codec(object):
     while self.nread - start < size:
       key = self.decode_shortstr()
       type = self.read(1)
-      if type == "S":
+      if type == b"S":
         value = self.decode_longstr()
-      elif type == "I":
+      elif type == b"I":
         value = self.decode_long()
-      elif type == "F":
+      elif type == b"F":
         value = self.decode_table()
-      elif type == "t":
+      elif type == b"t":
         value = (self.decode_octet() != 0)
       else:
         raise ValueError(repr(type))
@@ -201,7 +219,7 @@ def test(type, value):
     values = value
   else:
     values = [value]
-  stream = StringIO()
+  stream = BytesIO()
   codec = Codec(stream)
   for v in values:
     codec.encode(type, v)
@@ -209,7 +227,7 @@ def test(type, value):
   enc = stream.getvalue()
   stream.reset()
   dup = []
-  for i in xrange(len(values)):
+  for i in range(len(values)):
     dup.append(codec.decode(type))
   if values != dup:
     raise AssertionError("%r --> %r --> %r" % (values, enc, dup))

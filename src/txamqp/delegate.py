@@ -18,7 +18,7 @@
 #
 
 import inspect
-from spec import pythonize
+from .spec import pythonize
 
 class Delegate(object):
 

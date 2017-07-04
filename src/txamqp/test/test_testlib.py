@@ -30,7 +30,7 @@ from twisted.internet.defer import inlineCallbacks
 
 def mytrace(frame, event, arg):
     print_stack(frame);
-    print "===="
+    print("====")
     return mytrace
     
 class TestBaseTest(TestBase):

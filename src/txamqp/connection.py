@@ -17,10 +17,12 @@
 # under the License.
 #
 
-import codec
-from cStringIO import StringIO
+from . import codec
+from io import BytesIO
 from twisted.python import log
-from spec import pythonize
+from .spec import pythonize
+
+from six import with_metaclass
 
 class Frame(object):
 
@@ -42,19 +44,18 @@ class Frame(object):
   def __str__(self):
     return "[%d] %s" % (self.channel, self.payload)
 
-class Payload(object):
+class PayloadMeta(type):
+  def __new__(cls, name, bases, dict):
+    for req in ("encode", "decode", "type"):
+      if req not in dict:
+        raise TypeError("%s must define %s" % (name, req))
+    dict["decode"] = staticmethod(dict["decode"])
+    t = type.__new__(cls, name, bases, dict)
+    if t.type != None:
+      Frame.DECODERS[t.type] = t
+    return t
 
-  class __metaclass__(type):
-
-    def __new__(cls, name, bases, dict):
-      for req in ("encode", "decode", "type"):
-        if not dict.has_key(req):
-          raise TypeError("%s must define %s" % (name, req))
-      dict["decode"] = staticmethod(dict["decode"])
-      t = type.__new__(cls, name, bases, dict)
-      if t.type != None:
-        Frame.DECODERS[t.type] = t
-      return t
+class Payload(with_metaclass(PayloadMeta, object)):
 
   type = None
 
@@ -77,18 +78,18 @@ class Method(Payload):
     self.args = args
 
   def encode(self, enc):
-    buf = StringIO()
+    buf = BytesIO()
     c = codec.Codec(buf)
     c.encode_short(self.method.klass.id)
     c.encode_short(self.method.id)
     for field, arg in zip(self.method.fields, self.args):
       c.encode(field.type, arg)
     c.flush()
-    enc.encode_longstr(buf.getvalue())
+    enc.encode_longbytes(buf.getvalue())
 
   def decode(spec, dec):
-    enc = dec.decode_longstr()
-    c = codec.Codec(StringIO(enc))
+    enc = dec.decode_longbytes()
+    c = codec.Codec(BytesIO(enc))
     klass = spec.classes.byid[c.decode_short()]
     meth = klass.methods.byid[c.decode_short()]
     args = tuple([c.decode(f.type) for f in meth.fields])
@@ -117,7 +118,7 @@ class Header(Payload):
     del self.properties[name]
 
   def encode(self, enc):
-    buf = StringIO()
+    buf = BytesIO()
     c = codec.Codec(buf)
     c.encode_short(self.klass.id)
     c.encode_short(self.weight)
@@ -152,10 +153,10 @@ class Header(Payload):
         log.msg("Unknown message properties: %s" % ", ".join(unknown_props))
 
     c.flush()
-    enc.encode_longstr(buf.getvalue())
+    enc.encode_longbytes(buf.getvalue())
 
   def decode(spec, dec):
-    c = codec.Codec(StringIO(dec.decode_longstr()))
+    c = codec.Codec(BytesIO(dec.decode_longbytes()))
     klass = spec.classes.byid[c.decode_short()]
     weight = c.decode_short()
     size = c.decode_longlong()

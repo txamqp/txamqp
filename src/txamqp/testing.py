@@ -111,7 +111,7 @@ class AMQPump(object):
         klass = self._classFromPyName(klass)
         method = self._methodFromPyName(klass, method)
         args = [None] * len(method.fields.items)
-        for key, value in fields.iteritems():
+        for key, value in fields.items():
             field = method.fields.bypyname[key]
             args[method.fields.indexes[field]] = value
         self.pump(channel, Method(method, *args))
