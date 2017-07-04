@@ -2,7 +2,13 @@ sudo: false
 dist: trusty
 language: python
 python:
-  - 2.7
-services: rabbitmq
-install: pip install -r requirements.txt
-script: cd src; TXAMQP_BROKER=RABBITMQ trial txamqp
+  - "2.7"
+  - "3.2"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.6"
+services:
+  - rabbitmq
+install: "pip install -r requirements.txt"
+script: "cd src; TXAMQP_BROKER=RABBITMQ trial txamqp"
