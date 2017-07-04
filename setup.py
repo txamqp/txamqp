@@ -25,6 +25,6 @@ except ImportError:
 else:
     setupdict['packages'] = find_packages('src')
     setupdict['package_dir'] = { '': 'src' }
-    setupdict['install_requires'] = ['Twisted']
-        
+    setupdict['install_requires'] = ['Twisted', 'six']
+
 setup(**setupdict)
