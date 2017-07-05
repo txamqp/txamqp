@@ -3,7 +3,8 @@
 # based on the 'calculator' demo in the Thrift source
 
 import sys, os.path
-sys.path.insert(0, os.path.join(os.path.abspath(os.path.split(sys.argv[0])[0]), 'gen-py'))
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.split(sys.argv[0])[0]), 'gen-py.twisted'))
+
 import tutorial.Calculator
 from tutorial.ttypes import *
 from thrift.transport import TTwisted
@@ -42,21 +43,21 @@ class CalculatorHandler(object):
         return d
 
     def ping(self):
-        print "ping() called from client"
+        print("ping() called from client")
 
     def add(self, num1, num2):
-        print "add(num1, num2) called from client"
+        print("add(num1, num2) called from client")
         return num1 + num2
 
     def calculate(self, logid, w):
-        print "calculate(logid, w) called from client"
+        print("calculate(logid, w) called from client")
         try:
             return self._dispatchWork(w)
-        except Exception, e:
+        except Exception as e:
             return defer.fail(InvalidOperation(what=logid, why=e.message))
             
     def zip(self):
-        print "zip() called from client"
+        print("zip() called from client")
 
 @defer.inlineCallbacks
 def prepareClient(client, username, password):
@@ -71,25 +72,27 @@ def prepareClient(client, username, password):
         oprot_factory=pfactory)
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) != 7:
-        print "%s host port vhost username password path_to_spec" % sys.argv[0]
-        sys.exit(1)
+    import argparse
 
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-    vhost = sys.argv[3]
-    username = sys.argv[4]
-    password = sys.argv[5]
-    specFile = sys.argv[6]
+    parser = argparse.ArgumentParser(
+        description="Example Thrift server",
+        usage="%(prog)s localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml"
+    )
+    parser.add_argument('host')
+    parser.add_argument('port', type=int)
+    parser.add_argument('vhost')
+    parser.add_argument('username')
+    parser.add_argument('password')
+    parser.add_argument('spec_path')
+    args = parser.parse_args()
 
-    spec = txamqp.spec.load(specFile)
+    spec = txamqp.spec.load(args.spec_path)
 
     delegate = TwistedDelegate()
 
-    print 'Starting the server...'
+    print('Starting the server...')
 
-    d = ClientCreator(reactor, ThriftAMQClient, delegate, vhost,
-        spec).connectTCP(host, port)
-    d.addCallback(prepareClient, username, password)
+    d = ClientCreator(reactor, ThriftAMQClient, delegate, args.vhost,
+        spec).connectTCP(args.host, args.port)
+    d.addCallback(prepareClient, args.username, args.password)
     reactor.run()
