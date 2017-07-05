@@ -10,10 +10,10 @@ import txamqp.spec
 
 @inlineCallbacks
 def gotConnection(conn, username, password):
-    print "Connected to broker."
+    print("Connected to broker.")
     yield conn.authenticate(username, password)
 
-    print "Authenticated. Ready to receive messages"
+    print("Authenticated. Ready to receive messages")
     chan = yield conn.channel(1)
     yield chan.channel_open()
 
@@ -28,7 +28,7 @@ def gotConnection(conn, username, password):
 
     while True:
         msg = yield queue.get()
-        print 'Received: ' + msg.content.body + ' from channel #' + str(chan.id)
+        print('Received: {0} from channel #{1}'.format(msg.content.body, chan.id))
         if msg.content.body == "STOP":
             break
 
@@ -44,26 +44,27 @@ def gotConnection(conn, username, password):
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 7:
-        print "%s host port vhost username password path_to_spec" % sys.argv[0]
-        print "e.g. %s localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml" % sys.argv[0]
-        sys.exit(1)
+    import argparse
 
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-    vhost = sys.argv[3]
-    username = sys.argv[4]
-    password = sys.argv[5]
+    parser = argparse.ArgumentParser(
+        description="Example consumer",
+        usage="%(prog)s localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml"
+    )
+    parser.add_argument('host')
+    parser.add_argument('port', type=int)
+    parser.add_argument('vhost')
+    parser.add_argument('username')
+    parser.add_argument('password')
+    parser.add_argument('spec_path')
+    args = parser.parse_args()
 
-    spec = txamqp.spec.load(sys.argv[6])
+    spec = txamqp.spec.load(args.spec_path)
 
     delegate = TwistedDelegate()
+    d = ClientCreator(reactor, AMQClient, delegate=delegate, vhost=args.vhost,
+        spec=spec).connectTCP(args.host, args.port)
 
-    d = ClientCreator(reactor, AMQClient, delegate=delegate, vhost=vhost,
-        spec=spec).connectTCP(host, port)
-
-    d.addCallback(gotConnection, username, password)
+    d.addCallback(gotConnection, args.username, args.password)
 
     def whoops(err):
         if reactor.running:

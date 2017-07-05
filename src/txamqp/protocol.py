@@ -1,4 +1,5 @@
 # coding: utf-8
+from io import BytesIO, StringIO
 from twisted.internet import defer, protocol
 from twisted.internet.task import LoopingCall
 from twisted.internet.error import ConnectionDone
@@ -11,7 +12,8 @@ from txamqp.message import Message
 from txamqp.content import Content
 from txamqp.queue import TimeoutDeferredQueue, Closed as QueueClosed
 from txamqp.client import TwistedEvent, Closed, ConnectionClosed, ChannelClosed
-from cStringIO import StringIO
+
+import six
 import struct
 from time import time
 
@@ -94,7 +96,7 @@ class AMQChannel(object):
                     defer.returnValue(Message(resp.method, resp.args, content))
                 else:
                     raise ValueError(resp)
-        except QueueClosed, e:
+        except QueueClosed as e:
             if self.closed:
                 self._raiseClosed(self.reason)
             else:
@@ -108,7 +110,7 @@ class AMQChannel(object):
             self.writeContent(klass, child, queue)
         if size > 0:
             maxChunkSize = self.client.MAX_LENGTH - 8
-            for i in xrange(0, len(content.body), maxChunkSize):
+            for i in range(0, len(content.body), maxChunkSize):
                 chunk = content.body[i:i + maxChunkSize]
                 queue.put(Frame(self.id, Body(chunk)))
 
@@ -127,7 +129,7 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
     frame_mode = False
     MAX_LENGTH = 4096
     HEADER_LENGTH = 1 + 2 + 4 + 1
-    __buffer = ''
+    __buffer = b''
 
     def __init__(self, spec):
         self.spec = spec
@@ -140,7 +142,7 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
 
     # packs a frame, see qpid.connection.Connection#write
     def _packFrame(self, frame):
-        s = StringIO()
+        s = BytesIO()
         c = Codec(s)
         c.encode_octet(self.spec.constants.bypyname[frame.payload.type].id)
         c.encode_short(frame.channel)
@@ -151,7 +153,7 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
 
     # unpacks a frame, see qpid.connection.Connection#read
     def _unpackFrame(self, data):
-        s = StringIO(data)
+        s = BytesIO(data)
         c = Codec(s)
         frameType = spec.pythonize(self.spec.constants.byid[c.decode_octet()].name)
         channel = c.decode_short()
@@ -199,9 +201,9 @@ class FrameReceiver(protocol.Protocol, basic._PauseableMixin):
 
     def sendInitString(self):
         initString = "!4s4B"
-        s = StringIO()
+        s = BytesIO()
         c = Codec(s)
-        c.pack(initString, "AMQP", 1, 1, self.spec.major, self.spec.minor)
+        c.pack(initString, b"AMQP", 1, 1, self.spec.major, self.spec.minor)
         self.transport.write(s.getvalue())
 
 @defer.inlineCallbacks
@@ -214,7 +216,7 @@ def readContent(queue):
         children.append(content)
     size = header.size
     read = 0
-    buf = StringIO()
+    buf = six.StringIO()
     while read < size:
         body = yield queue.get()
         content = body.payload.content

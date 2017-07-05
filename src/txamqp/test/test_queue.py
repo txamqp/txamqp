@@ -198,7 +198,7 @@ class QueueTests(TestBase):
         yield channel.channel_open()
         try:
             result = yield channel.queue_delete(queue="i-dont-exist", if_empty="True")
-            print result
+            print(result)
             self.fail("Expected delete of non-existant queue to fail")
         except Closed as e:
             self.assertChannelException(404, e.args[0])

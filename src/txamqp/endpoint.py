@@ -80,21 +80,21 @@ class AMQEndpoint(object):
 
         @see: https://www.rabbitmq.com/uri-spec.html
         """
-        uri = URI.fromBytes(uri, defaultPort=5672)
+        uri = URI.fromBytes(uri.encode(), defaultPort=5672)
         kwargs = {}
-        host = uri.host
+        host = uri.host.decode()
         if "@" in host:
-            auth, host = uri.netloc.split("@")
+            auth, host = uri.netloc.decode().split("@")
             username, password = auth.split(":")
             kwargs.update({"username": username, "password": password})
 
-        vhost = uri.path
+        vhost = uri.path.decode()
         if len(vhost) > 1:
             vhost = vhost[1:]  # Strip leading "/"
         kwargs["vhost"] = vhost
 
         params = parse_qs(uri.query)
-        kwargs.update({name: value[0] for name, value in params.items()})
+        kwargs.update({name.decode(): value[0].decode() for name, value in params.items()})
 
         if "heartbeat" in kwargs:
             kwargs["heartbeat"] = int(kwargs["heartbeat"])

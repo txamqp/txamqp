@@ -29,7 +29,7 @@ class so that the generated code can be reused in a variety of
 situations.
 """
 
-import re, textwrap, new, os
+import re, textwrap, types, os
 
 from txamqp import xmlutil
 
@@ -48,12 +48,12 @@ class SpecContainer(object):
     self.bypyname = {}
 
   def add(self, item):
-    if self.byname.has_key(item.name):
+    if item.name in self.byname:
       raise ValueError("duplicate name: %s" % item)
-    if self.byid.has_key(item.id):
+    if item.id in self.byid:
       raise ValueError("duplicate id: %s" % item)
     pyname = pythonize(item.name)
-    if self.bypyname.has_key(pyname):
+    if pyname in self.bypyname:
       raise ValueError("duplicate pyname: %s" % item)
     self.indexes[item] = len(self.items)
     self.items.append(item)
@@ -111,7 +111,7 @@ class Spec(Metadata):
     return self.classes.byname[klass].methods.byname[meth]
 
   def define_module(self, name, doc = None):
-    module = new.module(name, doc)
+    module = types.ModuleType(name, doc)
     module.__file__ = self.file
     for c in self.classes:
       classname = pythonize(c.name)
@@ -221,7 +221,7 @@ class Method(Metadata):
     if self.content:
       code += ", content"
     code += ")"
-    exec code in g, l
+    exec(code, g, l)
     return l[name]
 
 class Field(Metadata):
@@ -244,7 +244,7 @@ def load_fields(nd, l, domains):
       type = f_nd["@domain"]
     except KeyError:
       type = f_nd["@type"]
-    while domains.has_key(type) and domains[type] != type:
+    while type in domains and domains[type] != type:
       type = domains[type]
     l.add(Field(f_nd["@name"], f_nd.index(), type, get_docs(f_nd)))
 
@@ -369,4 +369,4 @@ def test_summary():
     rows.append('<tr><td colspan="3">%s</td></tr>' % rule.text)
     rows.append('<tr><td colspan="3">&nbsp;</td></tr>')
 
-  print template % "\n".join(rows)
+  print(template % "\n".join(rows))

@@ -9,10 +9,10 @@ import txamqp.spec
 
 @inlineCallbacks
 def gotConnection(conn, username, password, body, count=1):
-    print "Connected to broker."
+    print("Connected to broker.")
     yield conn.authenticate(username, password)
 
-    print "Authenticated. Ready to send messages"
+    print("Authenticated. Ready to send messages")
     chan = yield conn.channel(1)
     yield chan.channel_open()
 
@@ -23,7 +23,7 @@ def gotConnection(conn, username, password, body, count=1):
                 msg = Content(content)
                 msg["delivery mode"] = 2
                 chan.basic_publish(exchange="chatservice", content=msg, routing_key="txamqp_chatroom")
-                print "Sending message: %s" % content
+                print("Sending message: %s" % content)
                 yield None
         return task.coiterate(message_iterator())
 
@@ -33,7 +33,7 @@ def gotConnection(conn, username, password, body, count=1):
     msg = Content(stopToken)
     msg["delivery mode"] = 2
     chan.basic_publish(exchange="chatservice", content=msg, routing_key="txamqp_chatroom")
-    print "Sending message: %s" % stopToken
+    print("Sending message: %s" % stopToken)
 
     yield chan.channel_close()
 
@@ -43,32 +43,30 @@ def gotConnection(conn, username, password, body, count=1):
     reactor.stop()
     
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 8:
-        print "%s host port vhost username password path_to_spec content [count]" % sys.argv[0]
-        print "e.g. %s localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml hello 1000" % sys.argv[0]
-        sys.exit(1)
+    import argparse
 
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-    vhost = sys.argv[3]
-    username = sys.argv[4]
-    password = sys.argv[5]
+    parser = argparse.ArgumentParser(
+        description="Example publisher",
+        usage="%(prog)s localhost 5672 / guest guest ../../specs/standard/amqp0-8.stripped.xml hello 1000"
+    )
+    parser.add_argument('host')
+    parser.add_argument('port', type=int)
+    parser.add_argument('vhost')
+    parser.add_argument('username')
+    parser.add_argument('password')
+    parser.add_argument('spec_path')
+    parser.add_argument('content')
+    parser.add_argument('count', type=int, default=1)
+    args = parser.parse_args()
 
-    spec = txamqp.spec.load(sys.argv[6])
-
-    content = sys.argv[7]
-    try:
-        count = int(sys.argv[8])
-    except:
-        count = 1
+    spec = txamqp.spec.load(args.spec_path)
 
     delegate = TwistedDelegate()
 
-    d = ClientCreator(reactor, AMQClient, delegate=delegate, vhost=vhost,
-        spec=spec).connectTCP(host, port)
+    d = ClientCreator(reactor, AMQClient, delegate=delegate, vhost=args.vhost,
+        spec=spec).connectTCP(args.host, args.port)
 
-    d.addCallback(gotConnection, username, password, content, count)
+    d.addCallback(gotConnection, args.username, args.password, args.content, args.count)
 
     def whoops(err):
         if reactor.running:

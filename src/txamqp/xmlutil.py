@@ -75,7 +75,7 @@ class Node(object):
 
   def __getitem__(self, key):
     if callable(key):
-      return filter(key, self.children)
+      return list(filter(key, self.children))
     else:
       t = key.__class__
       meth = "__get%s__" % t.__name__
