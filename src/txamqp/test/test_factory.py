@@ -25,7 +25,6 @@ from txamqp.factory import AMQFactory, DEFAULT_SPEC
 
 
 class AMQFactoryTest(TestCase):
-
     def test_build_protocol(self):
         """Test building AMQClient instances with default parameters."""
         address = IPv4Address("TCP", "127.0.0.1", 5672)
@@ -42,8 +41,8 @@ class AMQFactoryTest(TestCase):
         spec = "../specs/rabbitmq/amqp0-8.stripped.rabbitmq.xml"
         clock = Clock()
         factory = AMQFactory(spec=spec, clock=clock)
-        factory.setVHost("foo")
-        factory.setHeartbeat(1)
+        factory.set_vhost("foo")
+        factory.set_heartbeat(1)
         client = factory.buildProtocol(address)
         self.assertEqual("foo", client.vhost)
         self.assertEqual(spec, client.spec.file)

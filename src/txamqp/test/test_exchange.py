@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,21 +22,23 @@ Tests for exchange behaviour.
 
 Test classes ending in 'RuleTests' are derived from rules in amqp.xml.
 """
+from twisted.internet.defer import inlineCallbacks
 
 from txamqp.queue import Empty
-from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ, RABBITMQ
+from txamqp.testlib import TestBase, SupportedBrokers, QPID, OPENAMQ, RABBITMQ
 from txamqp.content import Content
 from txamqp.client import ChannelClosed, ConnectionClosed
 
-from twisted.internet.defer import inlineCallbacks
 
 class StandardExchangeVerifier:
-    """Verifies standard exchange behavior.
+    """
+    Verifies standard exchange behavior.
 
-    Used as base class for classes that test standard exchanges."""
+    Used as base class for classes that test standard exchanges.
+    """
 
     @inlineCallbacks
-    def verifyDirectExchange(self, ex):
+    def verify_direct_exchange(self, ex):
         """Verify that ex behaves like a direct exchange."""
         yield self.queue_declare(queue="q")
         yield self.channel.queue_bind(queue="q", exchange=ex, routing_key="k")
@@ -44,10 +46,11 @@ class StandardExchangeVerifier:
         try:
             yield self.assertPublishConsume(exchange=ex, queue="q", routing_key="kk")
             self.fail("Expected Empty exception")
-        except Empty: None # Expected
+        except Empty:  # Expected
+            pass
 
     @inlineCallbacks
-    def verifyFanOutExchange(self, ex):
+    def verify_fan_out_exchange(self, ex):
         """Verify that ex behaves like a fanout exchange."""
         yield self.queue_declare(queue="q") 
         yield self.channel.queue_bind(queue="q", exchange=ex)
@@ -57,7 +60,7 @@ class StandardExchangeVerifier:
             yield self.assertPublishGet((yield self.consume(qname)), ex)
 
     @inlineCallbacks
-    def verifyTopicExchange(self, ex):
+    def verify_topic_exchange(self, ex):
         """Verify that ex behaves like a topic exchange"""
         yield self.queue_declare(queue="a")
         yield self.channel.queue_bind(queue="a", exchange=ex, routing_key="a.#.b.*")
@@ -73,48 +76,49 @@ class StandardExchangeVerifier:
         yield self.assertEmpty(q)
 
     @inlineCallbacks
-    def verifyHeadersExchange(self, ex):
+    def verify_headers_exchange(self, ex):
         """Verify that ex is a headers exchange"""
         yield self.queue_declare(queue="q")
-        yield self.channel.queue_bind(queue="q", exchange=ex, arguments={ "x-match":"all", "name":"fred" , "age":3} )
+        yield self.channel.queue_bind(queue="q", exchange=ex, arguments={"x-match": "all", "name": "fred", "age": 3})
         q = yield self.consume("q")
-        headers = {"name":"fred", "age":3}
-        yield self.assertPublishGet(q, exchange=ex, properties={'headers':headers})
-        self.channel.basic_publish(exchange=ex) # No headers, won't deliver
-        yield self.assertEmpty(q);                 
-        
+        headers = {"name": "fred", "age": 3}
+        yield self.assertPublishGet(q, exchange=ex, properties={'headers': headers})
+        self.channel.basic_publish(exchange=ex)  # No headers, won't deliver
+        yield self.assertEmpty(q)
+
+
 
 class RecommendedTypesRuleTests(TestBase, StandardExchangeVerifier):
     """
     The server SHOULD implement these standard exchange types: topic, headers.
-    
+
     Client attempts to declare an exchange with each of these standard types.
     """
 
     @inlineCallbacks
-    def testDirect(self):
+    def test_direct(self):
         """Declare and test a direct exchange"""
         yield self.exchange_declare(0, exchange="d", type="direct")
-        yield self.verifyDirectExchange("d")
+        yield self.verify_direct_exchange("d")
 
     @inlineCallbacks
-    def testFanout(self):
+    def test_fanout(self):
         """Declare and test a fanout exchange"""
         yield self.exchange_declare(0, exchange="f", type="fanout")
-        yield self.verifyFanOutExchange("f")
+        yield self.verify_fan_out_exchange("f")
 
     @inlineCallbacks
-    def testTopic(self):
+    def test_topic(self):
         """Declare and test a topic exchange"""
         yield self.exchange_declare(0, exchange="t", type="topic")
-        yield self.verifyTopicExchange("t")
+        yield self.verify_topic_exchange("t")
 
     @inlineCallbacks
-    def testHeaders(self):
+    def test_headers(self):
         """Declare and test a headers exchange"""
         yield self.exchange_declare(0, exchange="h", type="headers")
-        yield self.verifyHeadersExchange("h")
-        
+        yield self.verify_headers_exchange("h")
+
 
 class RequiredInstancesRuleTests(TestBase, StandardExchangeVerifier):
     """
@@ -127,20 +131,21 @@ class RequiredInstancesRuleTests(TestBase, StandardExchangeVerifier):
     those types are defined).
     """
     @inlineCallbacks
-    def testAmqDirect(self):
-        yield self.verifyDirectExchange("amq.direct")
+    def test_amq_direct(self):
+        yield self.verify_direct_exchange("amq.direct")
 
     @inlineCallbacks
-    def testAmqFanOut(self):
-        yield self.verifyFanOutExchange("amq.fanout")
+    def test_amq_fan_out(self):
+        yield self.verify_fan_out_exchange("amq.fanout")
 
     @inlineCallbacks
-    def testAmqTopic(self):
-        yield self.verifyTopicExchange("amq.topic")
-        
+    def test_amq_topic(self):
+        yield self.verify_topic_exchange("amq.topic")
+
     @inlineCallbacks
-    def testAmqMatch(self):
-        yield self.verifyHeadersExchange("amq.match")
+    def test_amq_match(self):
+        yield self.verify_headers_exchange("amq.match")
+
 
 class DefaultExchangeRuleTests(TestBase, StandardExchangeVerifier):
     """
@@ -152,14 +157,14 @@ class DefaultExchangeRuleTests(TestBase, StandardExchangeVerifier):
     routing key but without specifying the exchange name, then ensuring that
     the message arrives in the queue correctly.
     """
-    @supportedBrokers(QPID, OPENAMQ)
+    @SupportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
-    def testDefaultExchange(self):
+    def test_default_exchange(self):
         # Test automatic binding by queue name.
         yield self.queue_declare(queue="d")
         yield self.assertPublishConsume(queue="d", routing_key="d")
         # Test explicit bind to default queue
-        yield self.verifyDirectExchange("")
+        yield self.verify_direct_exchange("")
 
 
 # TODO aconway 2006-09-27: Fill in empty tests:
@@ -170,6 +175,7 @@ class DefaultAccessRuleTests(TestBase):
     by specifying an empty exchange name in the Queue.Bind and content Publish
     methods.
     """
+
 
 class ExtensionsRuleTests(TestBase):
     """
@@ -204,8 +210,6 @@ class DeclareMethodExchangeFieldReservedRuleTests(TestBase):
     Exchange names starting with "amq." are reserved for predeclared and
     standardised exchanges. The client MUST NOT attempt to create an exchange
     starting with "amq.".
-    
-    
     """
 
 
@@ -214,8 +218,6 @@ class DeclareMethodTypeFieldTypedRuleTests(TestBase):
     Exchanges cannot be redeclared with different types.  The client MUST not
     attempt to redeclare an existing exchange with a different type than used
     in the original Exchange.Declare method.
-    
-    
     """
 
 
@@ -223,8 +225,6 @@ class DeclareMethodTypeFieldSupportRuleTests(TestBase):
     """
     The client MUST NOT attempt to create an exchange with a type that the
     server does not support.
-    
-    
     """
 
 
@@ -245,16 +245,12 @@ class DeclareMethodPassiveFieldNotFoundRuleTests(TestBase):
 class DeclareMethodDurableFieldSupportRuleTests(TestBase):
     """
     The server MUST support both durable and transient exchanges.
-    
-    
     """
 
 
 class DeclareMethodDurableFieldStickyRuleTests(TestBase):
     """
     The server MUST ignore the durable field if the exchange already exists.
-    
-    
     """
 
 
@@ -262,8 +258,6 @@ class DeclareMethodAutoDeleteFieldStickyRuleTests(TestBase):
     """
     The server MUST ignore the auto-delete field if the exchange already
     exists.
-    
-    
     """
 
 
@@ -294,67 +288,68 @@ class HeadersExchangeTests(TestBase):
         self.q = yield self.consume("q")
 
     @inlineCallbacks
-    def myAssertPublishGet(self, headers):
-        yield self.assertPublishGet(self.q, exchange="amq.match", properties={'headers':headers})
+    def _assert_publish_get(self, headers):
+        yield self.assertPublishGet(self.q, exchange="amq.match", properties={'headers': headers})
 
-    def myBasicPublish(self, headers):
-        self.channel.basic_publish(exchange="amq.match", content=Content("foobar", properties={'headers':headers}))
+    def _basic_publish(self, headers):
+        self.channel.basic_publish(exchange="amq.match", content=Content("foobar", properties={'headers': headers}))
 
     @inlineCallbacks
-    def testMatchAll(self):
-        yield self.channel.queue_bind(queue="q", exchange="amq.match", arguments={ 'x-match':'all', "name":"fred", "age":3})
-        yield self.myAssertPublishGet({"name":"fred", "age":3})
-        yield self.myAssertPublishGet({"name":"fred", "age":3, "extra":"ignoreme"})
-        
+    def test_match_all(self):
+        yield self.channel.queue_bind(queue="q", exchange="amq.match", arguments={'x-match': 'all', "name": "fred", "age": 3})
+        yield self._assert_publish_get({"name": "fred", "age": 3})
+        yield self._assert_publish_get({"name": "fred", "age": 3, "extra": "ignoreme"})
+
         # None of these should match
-        self.myBasicPublish({})
-        self.myBasicPublish({"name":"barney"})
-        self.myBasicPublish({"name":10})
-        self.myBasicPublish({"name":"fred", "age":2})
+        self._basic_publish({})
+        self._basic_publish({"name": "barney"})
+        self._basic_publish({"name": 10})
+        self._basic_publish({"name": "fred", "age": 2})
         yield self.assertEmpty(self.q)
 
     @inlineCallbacks
-    def testMatchAny(self):
-        yield self.channel.queue_bind(queue="q", exchange="amq.match", arguments={ 'x-match':'any', "name":"fred", "age":3})
-        yield self.myAssertPublishGet({"name":"fred"})
-        yield self.myAssertPublishGet({"name":"fred", "ignoreme":10})
-        yield self.myAssertPublishGet({"ignoreme":10, "age":3})
+    def test_match_any(self):
+        yield self.channel.queue_bind(queue="q", exchange="amq.match", arguments={'x-match': 'any', "name": "fred", "age": 3})
+        yield self._assert_publish_get({"name": "fred"})
+        yield self._assert_publish_get({"name": "fred", "ignoreme": 10})
+        yield self._assert_publish_get({"ignoreme": 10, "age": 3})
 
         # Wont match
-        self.myBasicPublish({})
-        self.myBasicPublish({"irrelevant":0})
+        self._basic_publish({})
+        self._basic_publish({"irrelevant": 0})
         yield self.assertEmpty(self.q)
+
 
 class MiscellaneousErrorsTests(TestBase):
     """
     Test some miscellaneous error conditions
     """
     @inlineCallbacks
-    def testTypeNotKnown(self):
+    def test_type_not_known(self):
         try:
             yield self.channel.exchange_declare(exchange="test_type_not_known_exchange", type="invalid_type")
             self.fail("Expected 503 for declaration of unknown exchange type.")
         except ConnectionClosed as e:
             self.assertConnectionException(503, e.args[0])
 
-    @supportedBrokers(QPID, OPENAMQ)
+    @SupportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
-    def testDifferentDeclaredType(self):
+    def test_different_declared_type(self):
         yield self.channel.exchange_declare(exchange="test_different_declared_type_exchange", type="direct")
         try:
             yield self.channel.exchange_declare(exchange="test_different_declared_type_exchange", type="topic")
             self.fail("Expected 530 for redeclaration of exchange with different type.")
         except ConnectionClosed as e:
             self.assertConnectionException(530, e.args[0])
-        #cleanup    
+        # cleanup
         other = yield self.connect()
         c2 = yield other.channel(1)
         yield c2.channel_open()
         yield c2.exchange_delete(exchange="test_different_declared_type_exchange")
 
-    @supportedBrokers(RABBITMQ)
+    @SupportedBrokers(RABBITMQ)
     @inlineCallbacks
-    def testDifferentDeclaredTypeRabbit(self):
+    def test_different_declared_type_rabbit(self):
         """Test redeclaration of exchange with different type on RabbitMQ."""
         yield self.channel.exchange_declare(
             exchange="test_different_declared_type_exchange", type="direct")

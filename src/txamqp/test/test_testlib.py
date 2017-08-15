@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,24 +20,24 @@
 #
 # Tests for the testlib itself.
 # 
+from traceback import print_stack
+from twisted.internet.defer import inlineCallbacks
 
 from txamqp.testlib import TestBase
 from txamqp.queue import Empty
 
-from traceback import print_stack
-
-from twisted.internet.defer import inlineCallbacks
 
 def mytrace(frame, event, arg):
-    print_stack(frame);
+    print_stack(frame)
     print("====")
     return mytrace
-    
+
+
 class TestBaseTest(TestBase):
     """Verify TestBase functions work as expected""" 
 
     @inlineCallbacks
-    def testAssertEmptyPass(self):
+    def test_assert_empty_pass(self):
         """Test assert empty works"""
         yield self.queue_declare(queue="empty")
         q = yield self.consume("empty")
@@ -45,25 +45,24 @@ class TestBaseTest(TestBase):
         try:
             yield q.get(timeout=1)
             self.fail("Queue is not empty.")
-        except Empty: None              # Ignore
+        except Empty:
+            pass  # Ignore
 
     @inlineCallbacks
-    def testAssertEmptyFail(self):
+    def test_assert_empty_fail(self):
         yield self.queue_declare(queue="full")
         q = yield self.consume("full")
         self.channel.basic_publish(routing_key="full")
         try:
-            yield self.assertEmpty(q);
+            yield self.assertEmpty(q)
             self.fail("assertEmpty did not assert on non-empty queue")
-        except AssertionError: None     # Ignore
+        except AssertionError:
+            pass  # Ignore
 
     @inlineCallbacks
-    def testMessageProperties(self):
+    def test_message_properties(self):
         """Verify properties are passed with message"""
-        props={"headers":{"x":1, "y":2}}
+        props = {"headers": {"x": 1, "y": 2}}
         yield self.queue_declare(queue="q")
         q = yield self.consume("q")
         yield self.assertPublishGet(q, routing_key="q", properties=props)
-
-
-

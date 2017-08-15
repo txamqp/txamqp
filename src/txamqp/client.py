@@ -47,8 +47,8 @@ class TwistedEvent(object):
     """
 
     def __init__(self):
-        self._waiters = [] # [Deferred]
-        self._result = None # or ('callback'|'errback', result)
+        self._waiters = []  # [Deferred]
+        self._result = None  # or ('callback'|'errback', result)
 
     def fire(self):
         """
@@ -120,7 +120,7 @@ class TwistedDelegate(Delegate):
 
     def channel_close(self, ch, msg):
         ch.channel_close_ok()
-        ch.doClose(msg)
+        ch.do_close(msg)
 
     def connection_close(self, ch, msg):
         # The server wants to close the connection, so let's send
@@ -128,7 +128,7 @@ class TwistedDelegate(Delegate):
         # close-ok frame will be buffered by the transport and sent to
         # the server before actually closing the socket.
         ch.connection_close_ok()
-        self.client.doClose(msg)
+        self.client.do_close(msg)
 
     def close(self, reason):
         self.client.closed = True

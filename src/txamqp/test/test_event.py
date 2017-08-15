@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,14 +16,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from txamqp.client import TwistedEvent, AlreadyFiredError
-
 from twisted.trial import unittest
 from twisted.python.failure import Failure
 
+from txamqp.client import TwistedEvent, AlreadyFiredError
+
 
 class EventTest(unittest.TestCase):
-
     def test_fire(self):
         """Test event success."""
         result = []
@@ -92,7 +91,7 @@ class EventTest(unittest.TestCase):
 
         d = e.wait().addCallback(bad)
         e.wait().addCallback(fired)
-        d.addErrback(lambda _ : None)
+        d.addErrback(lambda _: None)
 
         e.fire()
 

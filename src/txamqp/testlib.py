@@ -20,15 +20,14 @@
 import os
 import warnings
 
-from txamqp.content import Content
-import txamqp.spec
-
-from txamqp.protocol import AMQClient
-from txamqp.client import TwistedDelegate
-
 from twisted.internet import error, protocol, reactor
 from twisted.trial import unittest
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue
+
+import txamqp.spec
+from txamqp.content import Content
+from txamqp.protocol import AMQClient
+from txamqp.client import TwistedDelegate
 from txamqp.queue import Empty
 
 
@@ -37,13 +36,12 @@ OPENAMQ = "OPENAMQ"
 QPID = "QPID"
 
 
-class supportedBrokers(object):
-
-    def __init__(self, *supporterBrokers):
-        self.supporterBrokers = supporterBrokers
+class SupportedBrokers(object):
+    def __init__(self, *args):
+        self.brokers = args
 
     def __call__(self, f):
-        if _get_broker() not in self.supporterBrokers:
+        if _get_broker() not in self.brokers:
             f.skip = "Not supported for this broker."
         return f
 
@@ -51,9 +49,9 @@ class supportedBrokers(object):
 def _get_broker():
     return os.environ.get("TXAMQP_BROKER")
 
-USERNAME='guest'
-PASSWORD='guest'
-VHOST='/'
+USERNAME = 'guest'
+PASSWORD = 'guest'
+VHOST = '/'
 HEARTBEAT = 0
 
 
@@ -66,7 +64,6 @@ class TestDelegate(TwistedDelegate):
 
 
 class TestBase(unittest.TestCase):
-
     clientClass = AMQClient
     heartbeat = HEARTBEAT
 
@@ -100,7 +97,7 @@ class TestBase(unittest.TestCase):
 
     @inlineCallbacks
     def connect(self, host=None, port=None, spec=None, user=None, password=None, vhost=None,
-            heartbeat=None, clientClass=None):
+                heartbeat=None, clientClass=None):
         host = host or self.host
         port = port or self.port
         spec = spec or self.spec
@@ -111,25 +108,26 @@ class TestBase(unittest.TestCase):
         clientClass = clientClass or self.clientClass
 
         delegate = TestDelegate()
-        onConn = Deferred()
+        on_connect = Deferred()
         p = clientClass(delegate, vhost, txamqp.spec.load(spec), heartbeat=heartbeat)
-        f = protocol._InstanceFactory(reactor, p, onConn)
+        f = protocol._InstanceFactory(reactor, p, on_connect)
         c = reactor.connectTCP(host, port, f)
+
         def errb(thefailure):
             thefailure.trap(error.ConnectionRefusedError)
             print("failed to connect to host: %s, port: %s; These tests are designed to run against a running instance" \
                   " of the %s AMQP broker on the given host and port.  failure: %r" % (host, port, self.broker, thefailure,))
             thefailure.raiseException()
-        onConn.addErrback(errb)
+        on_connect.addErrback(errb)
 
         self.connectors.append(c)
-        client = yield onConn
+        client = yield on_connect
 
         yield self.authenticate(client, user, password)
         returnValue(client)
 
     @inlineCallbacks
-    def authenticate(self,client,user,password):
+    def authenticate(self, client, user, password):
         yield client.authenticate(user, password)
 
     @inlineCallbacks
@@ -138,9 +136,9 @@ class TestBase(unittest.TestCase):
             self.client = yield self.connect()
         except txamqp.client.Closed as le:
             le.args = tuple(("Unable to connect to AMQP broker in order to run tests (perhaps due to auth failure?). " \
-                "The tests assume that an instance of the %s AMQP broker is already set up and that this test script " \
-                "can connect to it and use it as user '%s', password '%s', vhost '%s'." % (_get_broker(),
-                    USERNAME, PASSWORD, VHOST),) + le.args)
+                             "The tests assume that an instance of the %s AMQP broker is already set up and that this test script " \
+                             "can connect to it and use it as user '%s', password '%s', vhost '%s'." % (_get_broker(),
+                                                                                                        USERNAME, PASSWORD, VHOST),) + le.args)
             raise
 
         self.channel = yield self.client.channel(1)
@@ -169,7 +167,7 @@ class TestBase(unittest.TestCase):
                          arguments={}):
         channel = channel or self.channel
         reply = yield channel.exchange_declare(ticket, exchange, type, passive, durable, auto_delete, internal, nowait, arguments)
-        self.exchanges.append((channel,exchange))
+        self.exchanges.append((channel, exchange))
         returnValue(reply)
 
     def assertChannelException(self, expectedCode, message):
@@ -194,7 +192,8 @@ class TestBase(unittest.TestCase):
         try:
             yield queue.get(timeout=1)
             self.fail("Queue is not empty.")
-        except Empty: None              # Ignore
+        except Empty:
+            pass
 
     @inlineCallbacks
     def assertPublishGet(self, queue, exchange="", routing_key="", properties=None):
@@ -207,11 +206,13 @@ class TestBase(unittest.TestCase):
                                    routing_key=routing_key)
         msg = yield queue.get(timeout=1)
         self.assertEqual(body, msg.content.body)
-        if (properties): self.assertEqual(properties, msg.content.properties)
+        if properties:
+            self.assertEqual(properties, msg.content.properties)
 
     def uniqueString(self):
         """Generate a unique string, unique for this TestBase instance"""
-        if not "uniqueCounter" in dir(self): self.uniqueCounter = 1;
+        if "uniqueCounter" not in dir(self):
+            self.uniqueCounter = 1
         return "Test Message " + str(self.uniqueCounter)
 
     @inlineCallbacks

@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,201 +16,207 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-from . import codec
 from io import BytesIO
-from twisted.python import log
-from .spec import pythonize
 
+from twisted.python import log
 from six import with_metaclass
 
+from . import codec
+from .spec import pythonize
+
+
 class Frame(object):
+    METHOD = "frame_method"
+    HEADER = "frame_header"
+    BODY = "frame_body"
+    OOB_METHOD = "frame_oob_method"
+    OOB_HEADER = "frame_oob_header"
+    OOB_BODY = "frame_oob_body"
+    TRACE = "frame_trace"
+    HEARTBEAT = "frame_heartbeat"
 
-  METHOD = "frame_method"
-  HEADER = "frame_header"
-  BODY = "frame_body"
-  OOB_METHOD = "frame_oob_method"
-  OOB_HEADER = "frame_oob_header"
-  OOB_BODY = "frame_oob_body"
-  TRACE = "frame_trace"
-  HEARTBEAT = "frame_heartbeat"
+    DECODERS = {}
 
-  DECODERS = {}
+    def __init__(self, channel, payload):
+        self.channel = channel
+        self.payload = payload
 
-  def __init__(self, channel, payload):
-    self.channel = channel
-    self.payload = payload
+    def __str__(self):
+        return "[%d] %s" % (self.channel, self.payload)
 
-  def __str__(self):
-    return "[%d] %s" % (self.channel, self.payload)
 
 class PayloadMeta(type):
-  def __new__(cls, name, bases, dict):
-    for req in ("encode", "decode", "type"):
-      if req not in dict:
-        raise TypeError("%s must define %s" % (name, req))
-    dict["decode"] = staticmethod(dict["decode"])
-    t = type.__new__(cls, name, bases, dict)
-    if t.type != None:
-      Frame.DECODERS[t.type] = t
-    return t
+    def __new__(cls, name, bases, cls_members):
+        for req in ("encode", "decode", "type"):
+            if req not in cls_members:
+                raise TypeError("%s must define %s" % (name, req))
+
+        t = type.__new__(cls, name, bases, cls_members)
+        if t.type is not None:
+            Frame.DECODERS[t.type] = t
+        return t
+
 
 class Payload(with_metaclass(PayloadMeta, object)):
+    type = None
 
-  type = None
+    def encode(self, enc): raise NotImplementedError
 
-  def encode(self, enc): raise NotImplementedError
+    @staticmethod
+    def decode(spec, dec): raise NotImplementedError
 
-  def decode(spec, dec): raise NotImplementedError
 
 class Method(Payload):
+    type = Frame.METHOD
 
-  type = Frame.METHOD
+    def __init__(self, method, *args):
+        if len(args) != len(method.fields):
+            argspec = ["%s: %s" % (pythonize(f.name), f.type)
+                       for f in method.fields]
+            raise TypeError("%s.%s expecting (%s), got %s" %
+                            (pythonize(method.klass.name),
+                             pythonize(method.name), ", ".join(argspec), args))
+        self.method = method
+        self.args = args
 
-  def __init__(self, method, *args):
-    if len(args) != len(method.fields):
-      argspec = ["%s: %s" % (pythonize(f.name), f.type)
-                 for f in method.fields]
-      raise TypeError("%s.%s expecting (%s), got %s" %
-                      (pythonize(method.klass.name),
-                       pythonize(method.name), ", ".join(argspec), args))
-    self.method = method
-    self.args = args
+    def encode(self, enc):
+        buf = BytesIO()
+        c = codec.Codec(buf)
+        c.encode_short(self.method.klass.id)
+        c.encode_short(self.method.id)
+        for field, arg in zip(self.method.fields, self.args):
+            c.encode(field.type, arg)
+        c.flush()
+        enc.encode_longbytes(buf.getvalue())
 
-  def encode(self, enc):
-    buf = BytesIO()
-    c = codec.Codec(buf)
-    c.encode_short(self.method.klass.id)
-    c.encode_short(self.method.id)
-    for field, arg in zip(self.method.fields, self.args):
-      c.encode(field.type, arg)
-    c.flush()
-    enc.encode_longbytes(buf.getvalue())
+    @staticmethod
+    def decode(spec, dec):
+        enc = dec.decode_longbytes()
+        c = codec.Codec(BytesIO(enc))
+        klass = spec.classes.byid[c.decode_short()]
+        meth = klass.methods.byid[c.decode_short()]
+        args = tuple([c.decode(f.type) for f in meth.fields])
+        return Method(meth, *args)
 
-  def decode(spec, dec):
-    enc = dec.decode_longbytes()
-    c = codec.Codec(BytesIO(enc))
-    klass = spec.classes.byid[c.decode_short()]
-    meth = klass.methods.byid[c.decode_short()]
-    args = tuple([c.decode(f.type) for f in meth.fields])
-    return Method(meth, *args)
+    def __str__(self):
+        return "%s %s" % (self.method, ", ".join([str(a) for a in self.args]))
 
-  def __str__(self):
-    return "%s %s" % (self.method, ", ".join([str(a) for a in self.args]))
 
 class Header(Payload):
+    type = Frame.HEADER
 
-  type = Frame.HEADER
+    def __init__(self, klass, weight, size, **properties):
+        self.klass = klass
+        self.weight = weight
+        self.size = size
+        self.properties = properties
+ 
+    def __getitem__(self, name):
+        return self.properties[name]
 
-  def __init__(self, klass, weight, size, **properties):
-    self.klass = klass
-    self.weight = weight
-    self.size = size
-    self.properties = properties
+    def __setitem__(self, name, value):
+        self.properties[name] = value
 
-  def __getitem__(self, name):
-    return self.properties[name]
+    def __delitem__(self, name):
+        del self.properties[name]
 
-  def __setitem__(self, name, value):
-    self.properties[name] = value
+    def encode(self, enc):
+        buf = BytesIO()
+        c = codec.Codec(buf)
+        c.encode_short(self.klass.id)
+        c.encode_short(self.weight)
+        c.encode_longlong(self.size)
 
-  def __delitem__(self, name):
-    del self.properties[name]
+        # property flags
+        nprops = len(self.klass.fields)
+        flags = 0
+        for i in range(nprops):
+            f = self.klass.fields.items[i]
+            flags <<= 1
+            if self.properties.get(f.name) is not None:
+                flags |= 1
+            # the last bit indicates more flags
+            if i > 0 and (i % 15) == 0:
+                flags <<= 1
+                if nprops > (i + 1):
+                    flags |= 1
+                    c.encode_short(flags)
+                    flags = 0
+        flags <<= ((16 - (nprops % 15)) % 16)
+        c.encode_short(flags)
 
-  def encode(self, enc):
-    buf = BytesIO()
-    c = codec.Codec(buf)
-    c.encode_short(self.klass.id)
-    c.encode_short(self.weight)
-    c.encode_longlong(self.size)
+        # properties
+        for f in self.klass.fields:
+            v = self.properties.get(f.name)
+            if v is not None:
+                c.encode(f.type, v)
+        unknown_props = set(self.properties.keys()) - set([f.name for f in self.klass.fields])
+        if unknown_props:
+            log.msg("Unknown message properties: %s" % ", ".join(unknown_props))
 
-    # property flags
-    nprops = len(self.klass.fields)
-    flags = 0
-    for i in range(nprops):
-      f = self.klass.fields.items[i]
-      flags <<= 1
-      if self.properties.get(f.name) != None:
-        flags |= 1
-      # the last bit indicates more flags
-      if i > 0 and (i % 15) == 0:
-        flags <<= 1
-        if nprops > (i + 1):
-          flags |= 1
-          c.encode_short(flags)
-          flags = 0
-    flags <<= ((16 - (nprops % 15)) % 16)
-    c.encode_short(flags)
+        c.flush()
+        enc.encode_longbytes(buf.getvalue())
 
-    # properties
-    for f in self.klass.fields:
-      v = self.properties.get(f.name)
-      if v != None:
-        c.encode(f.type, v)
-    unknown_props = set(self.properties.keys()) - \
-                    set([f.name for f in self.klass.fields])
-    if unknown_props:
-        log.msg("Unknown message properties: %s" % ", ".join(unknown_props))
+    @staticmethod
+    def decode(spec, dec):
+        c = codec.Codec(BytesIO(dec.decode_longbytes()))
+        klass = spec.classes.byid[c.decode_short()]
+        weight = c.decode_short()
+        size = c.decode_longlong()
 
-    c.flush()
-    enc.encode_longbytes(buf.getvalue())
+        # property flags
+        bits = []
+        while True:
+            flags = c.decode_short()
+            for i in range(15, 0, -1):
+                if flags >> i & 0x1 != 0:
+                    bits.append(True)
+                else:
+                    bits.append(False)
+            if flags & 0x1 == 0:
+                break
 
-  def decode(spec, dec):
-    c = codec.Codec(BytesIO(dec.decode_longbytes()))
-    klass = spec.classes.byid[c.decode_short()]
-    weight = c.decode_short()
-    size = c.decode_longlong()
+        # properties
+        properties = {}
+        for b, f in zip(bits, klass.fields):
+            if b:
+                # Note: decode returns a unicode u'' string but only
+                # plain '' strings can be used as keywords so we need to
+                # stringify the names.
+                properties[str(f.name)] = c.decode(f.type)
+        return Header(klass, weight, size, **properties)
 
-    # property flags
-    bits = []
-    while True:
-      flags = c.decode_short()
-      for i in range(15, 0, -1):
-        if flags >> i & 0x1 != 0:
-          bits.append(True)
-        else:
-          bits.append(False)
-      if flags & 0x1 == 0:
-        break
+    def __str__(self):
+        return "%s %s %s %s" % (self.klass, self.weight, self.size, self.properties)
 
-    # properties
-    properties = {}
-    for b, f in zip(bits, klass.fields):
-      if b:
-        # Note: decode returns a unicode u'' string but only
-        # plain '' strings can be used as keywords so we need to
-        # stringify the names.
-        properties[str(f.name)] = c.decode(f.type)
-    return Header(klass, weight, size, **properties)
-
-  def __str__(self):
-    return "%s %s %s %s" % (self.klass, self.weight, self.size,
-                            self.properties)
 
 class Body(Payload):
+    type = Frame.BODY
 
-  type = Frame.BODY
+    def __init__(self, content):
+        self.content = content
 
-  def __init__(self, content):
-    self.content = content
+    def encode(self, enc):
+        enc.encode_longstr(self.content)
 
-  def encode(self, enc):
-    enc.encode_longstr(self.content)
+    @staticmethod
+    def decode(spec, dec):
+        return Body(dec.decode_longstr())
 
-  def decode(spec, dec):
-    return Body(dec.decode_longstr())
+    def __str__(self):
+        return "Body(%r)" % self.content
 
-  def __str__(self):
-    return "Body(%r)" % self.content
 
 class Heartbeat(Payload):
-  type = Frame.HEARTBEAT
-  def __str__(self):
-    return "Heartbeat()"
+    type = Frame.HEARTBEAT
 
-  def encode(self, enc):
-    enc.encode_long(0)
+    def __str__(self):
+        return "Heartbeat()"
 
-  def decode(spec, dec):
-    dec.decode_long()
-    return Heartbeat()
+    def encode(self, enc):
+        enc.encode_long(0)
+
+    @staticmethod
+    def decode(spec, dec):
+        dec.decode_long()
+        return Heartbeat()

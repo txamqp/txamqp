@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,11 +16,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from twisted.internet.defer import inlineCallbacks
 
 from txamqp.content import Content
 from txamqp.testlib import TestBase
 
-from twisted.internet.defer import inlineCallbacks
 
 class ExampleTest(TestBase):
     """
@@ -45,8 +45,9 @@ class ExampleTest(TestBase):
         # Now we can send regular commands. If you want to see what the method
         # arguments mean or what other commands are available, you can use the
         # python builtin help() method. For example:
-        #help(chan)
-        #help(chan.exchange_declare)
+
+        # help(chan)
+        # help(chan.exchange_declare)
 
         # If you want browse the available protocol methods without being
         # connected to a live server you can use the amqp-doc utility:
@@ -65,7 +66,7 @@ class ExampleTest(TestBase):
         # Here we use keyword arguments.
         yield self.queue_declare(channel, queue="test-queue")
         yield channel.queue_bind(queue="test-queue", exchange="test", routing_key="key")
- 
+
         # Call Channel.basic_consume to register as a consumer.
         # All the protocol methods return a message object. The message object
         # has fields corresponding to the reply method fields, plus a content
@@ -88,10 +89,9 @@ class ExampleTest(TestBase):
         # argument in case the server hangs. By default queue.get() will wait
         # until a message arrives or the connection to the server dies.
         msg = yield queue.get(timeout=10)
-        
+
         # And check that we got the right response with assertEqual
         self.assertEqual(body, msg.content.body)
 
         # Now acknowledge the message.
         channel.basic_ack(msg.delivery_tag, True)
-

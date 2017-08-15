@@ -1,14 +1,16 @@
 # coding: utf-8
 from twisted.internet.defer import DeferredQueue
 
+
 class Empty(Exception):
     pass
+
 
 class Closed(Exception):
     pass
 
-class TimeoutDeferredQueue(DeferredQueue):
 
+class TimeoutDeferredQueue(DeferredQueue):
     END = object()
 
     def __init__(self, clock=None):
@@ -23,7 +25,7 @@ class TimeoutDeferredQueue(DeferredQueue):
                 self.waiting.remove(deferred)
                 deferred.errback(Empty())
 
-    def _raiseIfClosed(self, result, call_id):
+    def _raise_if_closed(self, result, call_id):
         if call_id is not None:
             call_id.cancel()
         if result == TimeoutDeferredQueue.END:
@@ -39,7 +41,7 @@ class TimeoutDeferredQueue(DeferredQueue):
         call_id = None
         if timeout:
             call_id = self.clock.callLater(timeout, self._timeout, deferred)
-        deferred.addCallback(self._raiseIfClosed, call_id)
+        deferred.addCallback(self._raise_if_closed, call_id)
 
         return deferred
 

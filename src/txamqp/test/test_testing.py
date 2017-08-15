@@ -40,13 +40,13 @@ class AMQPumpTest(TestCase):
         """
         Test sending and receiving frames.
         """
-        clientChannel = self.successResultOf(self.client.channel(1))
-        serverChannel = self.transport.channel(1)
-        d = clientChannel.basic_consume(queue="test-queue")
-        serverChannel.basic_consume_ok(consumer_tag="consumer")
+        client_channel = self.successResultOf(self.client.channel(1))
+        server_channel = self.transport.channel(1)
+        d = client_channel.basic_consume(queue="test-queue")
+        server_channel.basic_consume_ok(consumer_tag="consumer")
         reply = self.successResultOf(d)
         queue = self.successResultOf(self.client.queue(reply.consumer_tag))
         d = queue.get(timeout=1)
-        serverChannel.deliver("hello", consumer_tag="consumer")
+        server_channel.deliver("hello", consumer_tag="consumer")
         message = self.successResultOf(d)
         self.assertEqual("hello", message.content.body)

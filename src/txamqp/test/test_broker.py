@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,19 +16,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from twisted.internet.defer import inlineCallbacks
+
 from txamqp.client import ConnectionClosed
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
+from txamqp.testlib import TestBase, SupportedBrokers, QPID, OPENAMQ
 
-from twisted.internet.defer import inlineCallbacks
 
 class ASaslPlainAuthenticationTest(TestBase):
     """Test for SASL PLAIN authentication Broker functionality"""
 
     @inlineCallbacks
-    def authenticate(self,client,user,password):
-        yield client.authenticate(user, password,mechanism='PLAIN')
+    def authenticate(self, client, user, password):
+        yield client.authenticate(user, password, mechanism='PLAIN')
 
     @inlineCallbacks
     def test_sasl_plain(self):
@@ -36,18 +37,20 @@ class ASaslPlainAuthenticationTest(TestBase):
         yield channel.channel_open()
         yield channel.channel_close()
 
+
 class ASaslAmqPlainAuthenticationTest(TestBase):
     """Test for SASL AMQPLAIN authentication Broker functionality"""
 
     @inlineCallbacks
-    def authenticate(self,client,user,password):
-        yield client.authenticate(user, password,mechanism='AMQPLAIN')
+    def authenticate(self, client, user, password):
+        yield client.authenticate(user, password, mechanism='AMQPLAIN')
 
     @inlineCallbacks
     def test_sasl_amq_plain(self):
         channel = yield self.client.channel(200)
         yield channel.channel_open()
         yield channel.channel_close()
+
 
 class BrokerTests(TestBase):
     """Tests for basic Broker functionality"""
@@ -60,24 +63,24 @@ class BrokerTests(TestBase):
         acknowledge a message with an acknowledging consumer.
         """
         ch = self.channel
-        yield self.queue_declare(ch, queue = "myqueue")
+        yield self.queue_declare(ch, queue="myqueue")
 
         # No ack consumer
-        ctag = (yield ch.basic_consume(queue = "myqueue", no_ack = True)).consumer_tag
+        ctag = (yield ch.basic_consume(queue="myqueue", no_ack=True)).consumer_tag
         body = "test no-ack"
-        ch.basic_publish(routing_key = "myqueue", content = Content(body))
-        msg = yield ((yield self.client.queue(ctag)).get(timeout = 5))
+        ch.basic_publish(routing_key="myqueue", content=Content(body))
+        msg = yield ((yield self.client.queue(ctag)).get(timeout=5))
         self.assert_(msg.content.body == body)
 
         # Acknowleding consumer
-        yield self.queue_declare(ch, queue = "otherqueue")
-        ctag = (yield ch.basic_consume(queue = "otherqueue", no_ack = False)).consumer_tag
+        yield self.queue_declare(ch, queue="otherqueue")
+        ctag = (yield ch.basic_consume(queue="otherqueue", no_ack=False)).consumer_tag
         body = "test ack"
-        ch.basic_publish(routing_key = "otherqueue", content = Content(body))
-        msg = yield ((yield self.client.queue(ctag)).get(timeout = 5))
-        ch.basic_ack(delivery_tag = msg.delivery_tag)
+        ch.basic_publish(routing_key="otherqueue", content=Content(body))
+        msg = yield ((yield self.client.queue(ctag)).get(timeout=5))
+        ch.basic_ack(delivery_tag=msg.delivery_tag)
         self.assert_(msg.content.body == body)
-        
+
     @inlineCallbacks
     def test_basic_delivery_immediate(self):
         """
@@ -108,7 +111,6 @@ class BrokerTests(TestBase):
 
         # TODO: Ensure we fail if immediate=True and there's no consumer.
 
-
     @inlineCallbacks
     def test_basic_delivery_queued(self):
         """
@@ -134,7 +136,7 @@ class BrokerTests(TestBase):
             self.fail("Expected error on queue_declare for invalid channel")
         except ConnectionClosed as e:
             self.assertConnectionException(504, e.args[0])
-    
+
     @inlineCallbacks
     def test_closed_channel(self):
         channel = yield self.client.channel(200)
@@ -146,7 +148,7 @@ class BrokerTests(TestBase):
         except ConnectionClosed as e:
             self.assertConnectionException(504, e.args[0])
 
-    @supportedBrokers(QPID, OPENAMQ)
+    @SupportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_channel_flow(self):
         channel = self.channel
@@ -159,7 +161,8 @@ class BrokerTests(TestBase):
         try:
             yield incoming.get(timeout=1) 
             self.fail("Received message when flow turned off.")
-        except Empty: None
+        except Empty:
+            pass
 
         yield channel.channel_flow(active=True)
         msg = yield incoming.get(timeout=1)

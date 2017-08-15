@@ -40,11 +40,11 @@ class AMQFactory(Factory):
         self._vhost = "/"
         self._heartbeat = 0
 
-    def setVHost(self, vhost):
+    def set_vhost(self, vhost):
         """Set a custom vhost."""
         self._vhost = vhost
 
-    def setHeartbeat(self, heartbeat):
+    def set_heartbeat(self, heartbeat):
         """Set a custom heartbeat."""
         self._heartbeat = heartbeat
 

@@ -75,7 +75,7 @@ class AMQPump(object):
             # Ignore the init string
             self.initialized = True
             return
-        frame = self.client._unpackFrame(data)
+        frame = self.client._unpack_frame(data)
         self.outgoing.setdefault(frame.channel, []).append(frame)
         self._log("Outgoing frame: {frame}", frame=frame)
 
@@ -145,7 +145,7 @@ class AMQPump(object):
         frame = Frame(channel, payload)
         self._log("Incoming frame: {frame}", frame=frame)
         self.incoming.setdefault(channel, []).append(frame)
-        self.client.frameReceived(frame)
+        self.client.frame_received(frame)
 
     def _classFromPyName(self, name):
         """Return the spec class metadata object with given name."""

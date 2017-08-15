@@ -4,8 +4,7 @@ from twisted.internet.error import ConnectionLost
 from twisted.logger import Logger
 
 from txamqp.protocol import AMQClient
-from txamqp.client import (
-    TwistedDelegate, Closed, ConnectionClosed, ChannelClosed)
+from txamqp.client import TwistedDelegate, Closed, ConnectionClosed, ChannelClosed
 from txamqp.testing import AMQPump
 from txamqp.spec import DEFAULT_SPEC, load
 from txamqp.queue import Closed as QueueClosed
@@ -29,7 +28,7 @@ class AMQClientTest(TestCase):
         """Test handling a connection-close method sent by the broker."""
         self.transport.channel(0).connection_close()
         # We send close-ok before shutting down the connection
-        [frame] = self.transport.outgoing[0]
+        frame = self.transport.outgoing[0][0]
         self.assertEqual("close-ok", frame.payload.method.name)
         self.assertTrue(self.protocol.closed)
         channel0 = self.successResultOf(self.protocol.channel(0))
@@ -58,7 +57,7 @@ class AMQClientTest(TestCase):
         d = self.protocol.close(within=1)
 
         # Since we passed within=1, we have an outgoing 'close' frame.
-        [frame] = self.transport.outgoing[0]
+        frame = self.transport.outgoing[0][0]
         self.assertEqual("close", frame.payload.method.name)
 
         # At this point the client is not yet closed, since we're waiting for

@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,11 +16,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from twisted.internet.defer import inlineCallbacks, returnValue
+
 from txamqp.queue import Empty
 from txamqp.content import Content
-from txamqp.testlib import TestBase, supportedBrokers, QPID, OPENAMQ
+from txamqp.testlib import TestBase, SupportedBrokers, QPID, OPENAMQ
 
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 class TxTests(TestBase):
     """
@@ -36,7 +37,7 @@ class TxTests(TestBase):
         queue_a, queue_b, queue_c = yield self.perform_txn_work(channel, "tx-commit-a", "tx-commit-b", "tx-commit-c")
         yield channel.tx_commit()
 
-        #check results
+        # check results
         for i in range(1, 5):
             msg = yield queue_c.get(timeout=1)
             self.assertEqual("TxMessage %d" % i, msg.content.body)
@@ -51,13 +52,14 @@ class TxTests(TestBase):
             try:
                 extra = yield q.get(timeout=1)
                 self.fail("Got unexpected message: " + extra.content.body)
-            except Empty: None
+            except Empty:
+                pass
 
-        #cleanup
+        # cleanup
         channel.basic_ack(delivery_tag=0, multiple=True)
         yield channel.tx_commit()
 
-    @supportedBrokers(QPID, OPENAMQ)
+    @SupportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_auto_rollback(self):
         """
@@ -70,11 +72,12 @@ class TxTests(TestBase):
             try:
                 extra = yield q.get(timeout=1)
                 self.fail("Got unexpected message: " + extra.content.body)
-            except Empty: None
+            except Empty:
+                pass
 
         yield channel.tx_rollback()
 
-        #check results
+        # check results
         for i in range(1, 5):
             msg = yield queue_a.get(timeout=1)
             self.assertEqual("Message %d" % i, msg.content.body)
@@ -89,13 +92,14 @@ class TxTests(TestBase):
             try:
                 extra = yield q.get(timeout=1)
                 self.fail("Got unexpected message: " + extra.content.body)
-            except Empty: None
+            except Empty:
+                pass
 
-        #cleanup
+        # cleanup
         channel.basic_ack(delivery_tag=0, multiple=True)
         yield channel.tx_commit()
 
-    @supportedBrokers(QPID, OPENAMQ)
+    @SupportedBrokers(QPID, OPENAMQ)
     @inlineCallbacks
     def test_rollback(self):
         """
@@ -108,11 +112,12 @@ class TxTests(TestBase):
             try:
                 extra = yield q.get(timeout=1)
                 self.fail("Got unexpected message: " + extra.content.body)
-            except Empty: None
+            except Empty:
+                pass
 
         yield channel.tx_rollback()
 
-        #check results
+        # check results
         for i in range(1, 5):
             msg = yield queue_a.get(timeout=1)
             self.assertEqual("Message %d" % i, msg.content.body)
@@ -127,9 +132,10 @@ class TxTests(TestBase):
             try:
                 extra = yield q.get(timeout=1)
                 self.fail("Got unexpected message: " + extra.content.body)
-            except Empty: None
+            except Empty:
+                pass
 
-        #cleanup
+        # cleanup
         channel.basic_ack(delivery_tag=0, multiple=True)
         yield channel.tx_commit()
 
@@ -139,14 +145,14 @@ class TxTests(TestBase):
         Utility method that does some setup and some work under a transaction. Used for testing both
         commit and rollback
         """
-        #setup:
+        # setup:
         yield channel.queue_declare(queue=name_a, exclusive=True)
         yield channel.queue_declare(queue=name_b, exclusive=True)
         yield channel.queue_declare(queue=name_c, exclusive=True)
 
         key = "my_key_" + name_b
         topic = "my_topic_" + name_c 
-    
+
         yield channel.queue_bind(queue=name_b, exchange="amq.direct", routing_key=key)
         yield channel.queue_bind(queue=name_c, exchange="amq.topic", routing_key=topic)
 
@@ -158,12 +164,13 @@ class TxTests(TestBase):
 
         yield channel.tx_select()
 
-        #consume and ack messages
+        # consume and ack messages
         sub_a = yield channel.basic_consume(queue=name_a, no_ack=False)
         queue_a = yield self.client.queue(sub_a.consumer_tag)
         for i in range(1, 5):
             msg = yield queue_a.get(timeout=1)
             self.assertEqual("Message %d" % i, msg.content.body)
+
         channel.basic_ack(delivery_tag=msg.delivery_tag, multiple=True)    
 
         sub_b = yield channel.basic_consume(queue=name_b, no_ack=False)
@@ -178,7 +185,7 @@ class TxTests(TestBase):
         self.assertEqual("Message 7", msg.content.body)
         channel.basic_ack(delivery_tag=msg.delivery_tag)    
 
-        #publish messages
+        # publish messages
         for i in range(1, 5):
             channel.basic_publish(routing_key=topic, exchange="amq.topic", content=Content("TxMessage %d" % i))
 
@@ -197,7 +204,6 @@ class TxTests(TestBase):
         for i in range(1, 10):
             channel.basic_publish(routing_key="commit-overlapping", content=Content("Message %d" % i))
 
-        
         yield channel.tx_select()
 
         sub = yield channel.basic_consume(queue="commit-overlapping", no_ack=False)
@@ -207,11 +213,12 @@ class TxTests(TestBase):
             self.assertEqual("Message %d" % i, msg.content.body)
             if i in [3, 6, 10]:
                 channel.basic_ack(delivery_tag=msg.delivery_tag)    
-                
+
         yield channel.tx_commit()
 
-        #check all have been acked:
+        # check all have been acked:
         try:
             extra = yield queue.get(timeout=1)
             self.fail("Got unexpected message: " + extra.content.body)
-        except Empty: None
+        except Empty:
+            pass

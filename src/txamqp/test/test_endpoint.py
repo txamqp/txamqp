@@ -28,7 +28,6 @@ from txamqp.endpoint import AMQEndpoint
 
 
 class AMQEndpointTest(TestCase):
-
     def setUp(self):
         super(AMQEndpointTest, self).setUp()
         self.reactor = MemoryReactorClock()
@@ -39,8 +38,7 @@ class AMQEndpointTest(TestCase):
         The endpoint connects to the broker and performs the AMQP
         authentication.
         """
-        endpoint = AMQEndpoint(
-            self.reactor, "1.2.3.4", "1234", username="me", password="pw")
+        endpoint = AMQEndpoint(self.reactor, "1.2.3.4", "1234", username="me", password="pw")
         endpoint.connect(self.factory)
         self.assertEqual(("1.2.3.4", 1234), self.reactor.tcpClients[0][:2])
         # _WrappingFactory from twisted.internet.endpoints
@@ -55,9 +53,7 @@ class AMQEndpointTest(TestCase):
         """
         It's possible to specify a custom vhost and a custom heartbeat.
         """
-        endpoint = AMQEndpoint(
-            self.reactor, "1.2.3.4", "1234", username="me", password="pw",
-            vhost="foo", heartbeat=10)
+        endpoint = AMQEndpoint(self.reactor, "1.2.3.4", "1234", username="me", password="pw", vhost="foo", heartbeat=10)
         endpoint.connect(self.factory)
         # _WrappingFactory from twisted.internet.endpoints
         factory = self.reactor.tcpClients[0][2]
@@ -71,7 +67,7 @@ class AMQEndpointTest(TestCase):
         """
         It's possible to build an AMQEndpoint from an AMQP URI string.
         """
-        endpoint = AMQEndpoint.fromURI(
+        endpoint = AMQEndpoint.from_uri(
             self.reactor, "amqp://me:pw@some.broker/foo?heartbeat=10")
         endpoint.connect(self.factory)
         self.assertEqual(("some.broker", 5672), self.reactor.tcpClients[0][:2])
@@ -87,7 +83,6 @@ class AMQEndpointTest(TestCase):
 
 
 class AMQEndpointIntegrationTest(IntegrationTest):
-
     @inlineCallbacks
     def test_connect(self):
         """
