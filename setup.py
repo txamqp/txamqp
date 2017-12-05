@@ -1,9 +1,9 @@
 setupdict= {
     'name': 'txAMQP',
-    'version': '0.7.0',
+    'version': '0.8.0',
     'author': 'Esteve Fernandez',
-    'author_email': 'esteve@fluidinfo.com',
-    'url': 'https://launchpad.net/txamqp',
+    'author_email': 'esteve@apache.org',
+    'url': 'https://github.com/txamqp/txamqp',
     'description': 'Python library for communicating with AMQP peers and brokers using Twisted',
     'long_description': '''This project contains all the necessary code to connect, send and receive messages to/from an AMQP-compliant peer or broker (Qpid, OpenAMQ, RabbitMQ) using Twisted.
 
