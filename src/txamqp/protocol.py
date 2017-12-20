@@ -226,6 +226,12 @@ def read_content(queue):
     while read < size:
         body = yield queue.get()
         content = body.payload.content
+
+        # if this is the first instance of real binary content, convert the string buffer to BytesIO
+        # Not a nice fix but it preserves the original behaviour
+        if six.PY3 and isinstance(content, bytes) and isinstance(buf, six.StringIO):
+            buf = six.BytesIO()
+
         buf.write(content)
         read += len(content)
     defer.returnValue(Content(buf.getvalue(), children, header.properties.copy()))

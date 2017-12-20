@@ -24,6 +24,7 @@ Utility code to translate between python objects and AMQP encoded data
 fields.
 """
 
+import six
 from io import BytesIO
 from struct import pack, calcsize, unpack
 
@@ -134,7 +135,14 @@ class Codec(object):
     def enc_str(self, fmt, s):
         size = len(s)
         self.pack(fmt, size)
-        self.write(s.encode())
+
+        # Convert everything to binary representation (aka python3 string, and python2 unicode)
+        if six.PY3 and not isinstance(s, bytes):
+            s = s.encode()
+        elif six.PY2 and isinstance(s, six.text_type):
+            s = s.encode()
+
+        self.write(s)
 
     def enc_bytes(self, fmt, s):
         size = len(s)
@@ -143,7 +151,14 @@ class Codec(object):
 
     def dec_str(self, fmt):
         size = self.unpack(fmt)
-        return self.read(size).decode()
+        data = self.read(size)
+
+        # Oppertunistic binary decode
+        try:
+            data = data.decode()
+        except UnicodeDecodeError:
+            pass
+        return data
 
     def dec_bytes(self, fmt):
         size = self.unpack(fmt)

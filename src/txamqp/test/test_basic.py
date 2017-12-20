@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import pickle
 from twisted.internet.defer import inlineCallbacks
 
 from txamqp.client import ConnectionClosed, ChannelClosed
@@ -473,6 +474,30 @@ class BasicTests(TestBase):
         reply = yield channel.basic_get(no_ack=True)
         self.assertEqual(reply.method.klass.name, "basic")
         self.assertEqual(reply.method.name, "get-empty")
+
+    @inlineCallbacks
+    def test_get_binary(self):
+        """
+        Test basic_get method
+        """
+        channel = self.channel
+        yield channel.queue_declare(queue="test-get-bin", exclusive=True)
+
+        # publish some messages (no_ack=True) with persistent messaging
+        for i in range(1, 11):
+            msg = "Message %d" % i
+            msg_binary = Content(pickle.dumps(msg, 2))
+            # msg_binary = Content(msg)
+            msg_binary["delivery mode"] = 2
+
+            channel.basic_publish(routing_key="test-get-bin", content=msg_binary)
+
+        # use basic_get to read back the messages, and check that we get an empty at the end
+        for i in range(1, 11):
+            reply = yield channel.basic_get(no_ack=True)
+            self.assertEqual(reply.method.klass.name, "basic")
+            self.assertEqual(reply.method.name, "get-ok")
+            self.assertEqual("Message %d" % i, pickle.loads(reply.content.body))
 
     @inlineCallbacks
     def test_fragment_body(self):
