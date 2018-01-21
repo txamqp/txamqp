@@ -479,6 +479,7 @@ class BasicTests(TestBase):
     def test_get_binary(self):
         """
         Test basic_get method
+        Refs #4
         """
         channel = self.channel
         yield channel.queue_declare(queue="test-get-bin", exclusive=True)
@@ -498,6 +499,28 @@ class BasicTests(TestBase):
             self.assertEqual(reply.method.klass.name, "basic")
             self.assertEqual(reply.method.name, "get-ok")
             self.assertEqual("Message %d" % i, pickle.loads(reply.content.body))
+
+    @inlineCallbacks
+    def test_get_properties_with_unicode(self):
+        """
+        Test basic_get method with a property having unicode content
+        Refs #4
+        """
+        channel = self.channel
+        yield channel.queue_declare(queue="test-get-header-unicode", exclusive=True)
+
+        # publish a message (no_ack=True) with persistent messaging
+        msg = Content("some value")
+        msg["delivery mode"] = 2
+        msg['headers'] = {"somekey": u"any thing in unicode"}
+        channel.basic_publish(routing_key="test-get-header-unicode", content=msg)
+
+        # use basic_get to read back the messages, and check that we get an empty at the end
+        reply = yield channel.basic_get(no_ack=True)
+        self.assertEqual(reply.method.klass.name, "basic")
+        self.assertEqual(reply.method.name, "get-ok")
+        self.assertEqual("some value", reply.content.body)
+        self.assertEqual({"somekey": u"any thing in unicode"}, reply.content.properties['headers'])
 
     @inlineCallbacks
     def test_fragment_body(self):

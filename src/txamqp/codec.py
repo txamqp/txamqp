@@ -203,7 +203,8 @@ class Codec(object):
         codec = Codec(enc)
         for key, value in tbl.items():
             codec.encode_shortstr(key)
-            if isinstance(value, str):
+            # Convert everything to binary representation (aka python3 string, and python2 unicode)
+            if isinstance(value, str) or (six.PY2 and isinstance(value, unicode)):
                 codec.write(b"S")
                 codec.encode_longstr(value)
             else:
