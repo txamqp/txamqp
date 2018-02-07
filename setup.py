@@ -1,6 +1,6 @@
 setupdict= {
     'name': 'txAMQP',
-    'version': '0.8.0',
+    'version': '0.8.2',
     'author': 'Esteve Fernandez',
     'author_email': 'esteve@apache.org',
     'url': 'https://github.com/txamqp/txamqp',
